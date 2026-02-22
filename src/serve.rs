@@ -82,11 +82,29 @@ pub async fn run(
         }
     });
 
+    // Spawn retention pruner (hourly)
+    if let Some(ref re) = rules_engine {
+        let retention_days = re.lock().await.config.global.retention_days;
+        let prune_state = state.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+                if let Some(ref store) = prune_state.store {
+                    match store.prune(retention_days) {
+                        Ok(n) if n > 0 => info!("Pruned {} alerts older than {}d", n, retention_days),
+                        _ => {}
+                    }
+                }
+            }
+        });
+    }
+
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/ws", get(ws_handler))
         .route("/alerts", get(alerts_handler))
         .route("/alerts/stats", get(stats_handler))
+        .route("/alerts/recent", get(recent_alerts_handler))
         .with_state(state);
 
     let addr: SocketAddr = format!("{}:{}", bind, port).parse()?;
@@ -119,6 +137,21 @@ async fn stats_handler(
     match store.stats() {
         Ok(stats) => Json(stats),
         Err(e) => Json(serde_json::json!({"error": e.to_string()})),
+    }
+}
+
+async fn recent_alerts_handler(
+    State(state): State<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    let Some(ref store) = state.store else {
+        return Json(serde_json::json!([]));
+    };
+    let mut params = std::collections::HashMap::new();
+    params.insert("limit".into(), "20".into());
+    let query = AlertQuery::from_params(&params);
+    match store.query(&query) {
+        Ok(alerts) => Json(serde_json::json!(alerts)),
+        Err(_) => Json(serde_json::json!([])),
     }
 }
 
@@ -389,6 +422,13 @@ const DASHBOARD_HTML: &str = r##"<!doctype html>
   </div>
 </div>
 
+<div class="panels">
+  <div class="panel" style="grid-column: 1 / -1">
+    <h3>🚨 Alert History <span id="alert-count" style="color:#6b7280;font-weight:400"></span></h3>
+    <div class="panel-body short" id="alert-history" style="max-height:300px"></div>
+  </div>
+</div>
+
 <script>
 const MAX_POINTS=80, MAX_EVENTS=60, MAX_BLOCKS=20;
 const PROTO_COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',nft:'#f472b6',system:'#4b5563',unknown:'#6b7280'};
@@ -560,6 +600,38 @@ function connect(){
 }
 connect();
 setInterval(updateUI,1000);
+
+// Alert history polling
+const ALERT_COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',unknown:'#6b7280'};
+const ALERT_EMOJI={dex:'🔄',bridge:'🌉',lending:'🏦',token:'💰',unknown:'🚨'};
+
+async function pollAlerts(){
+  try{
+    const r=await fetch('/alerts/recent');
+    const alerts=await r.json();
+    const el=document.getElementById('alert-history');
+    const countEl=document.getElementById('alert-count');
+    if(!alerts.length){el.innerHTML='<div style="padding:14px;color:#4b5563">No alerts yet — waiting for rule matches...</div>';countEl.textContent='';return;}
+    countEl.textContent=`(${alerts.length} recent)`;
+    el.innerHTML='';
+    for(const a of alerts){
+      const cat=a.tx?.category||'unknown';
+      const color=ALERT_COLORS[cat]||'#6b7280';
+      const emoji=ALERT_EMOJI[cat]||'🚨';
+      const label=a.tx?.to_label||((a.tx?.to||'?').slice(0,12)+'…');
+      const action=a.tx?.action||'';
+      const value=a.tx?.value_eth>0.001?a.tx.value_eth.toFixed(4)+' ETH':'';
+      const time=new Date(a.timestamp*1000).toLocaleTimeString();
+      const block=a.block_number||'?';
+      const d=document.createElement('div');
+      d.className='event-row '+cat;
+      d.innerHTML=`<span class="emoji">${emoji}</span><span style="color:${color};font-weight:600;min-width:100px">${a.rule_name}</span><span class="desc">${action?action+' → ':''}${label}</span>${value?`<span class="val">${value}</span>`:''}<span class="ts">blk ${block}<br>${time}</span>`;
+      el.appendChild(d);
+    }
+  }catch(e){console.error('Alert poll failed:',e)}
+}
+pollAlerts();
+setInterval(pollAlerts,5000);
 </script>
 </body>
 </html>

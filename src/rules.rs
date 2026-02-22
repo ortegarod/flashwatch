@@ -27,10 +27,14 @@ pub struct GlobalConfig {
     /// Batch window in seconds (0 = fire immediately).
     #[serde(default)]
     pub batch_secs: u64,
+    /// Alert retention in days (auto-prune older alerts).
+    #[serde(default = "default_retention")]
+    pub retention_days: u64,
 }
 
 fn default_cooldown() -> u64 { 10 }
 fn default_rate_limit() -> u64 { 30 }
+fn default_retention() -> u64 { 30 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Rule {

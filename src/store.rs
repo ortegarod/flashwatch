@@ -161,6 +161,19 @@ impl AlertStore {
             "by_category": by_category,
         }))
     }
+
+    /// Prune alerts older than the given number of days. Returns count deleted.
+    pub fn prune(&self, retention_days: u64) -> eyre::Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let deleted = conn.execute(
+            "DELETE FROM alerts WHERE timestamp < unixepoch() - ?1",
+            params![retention_days * 86400],
+        )?;
+        if deleted > 0 {
+            let _ = conn.execute_batch("PRAGMA incremental_vacuum;");
+        }
+        Ok(deleted)
+    }
 }
 
 /// Query parameters for the /alerts endpoint.
