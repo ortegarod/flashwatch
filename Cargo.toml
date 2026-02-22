@@ -1,0 +1,48 @@
+[package]
+name = "flashwatch"
+version = "0.1.0"
+edition = "2024"
+authors = ["Rodrigo Ortega <ortegarod@github.com>"]
+description = "Real-time Base L2 flashblock monitor and analyzer"
+license = "MIT"
+repository = "https://github.com/ortegarod/flashwatch"
+keywords = ["base", "ethereum", "l2", "flashblocks", "monitoring"]
+categories = ["command-line-utilities", "cryptography::cryptocurrencies"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# WebSocket client
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+
+# Ethereum types
+alloy-primitives = "1.5"
+alloy-rpc-types-eth = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time
+chrono = "0.4"
+
+# Terminal UI
+crossterm = "0.28"
+
+# HTTP client (for JSON-RPC calls)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Color output
+colored = "3"
+
+# Error handling
+eyre = "0.6"
