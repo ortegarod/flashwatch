@@ -170,7 +170,7 @@ fn decode_message(data: &[u8]) -> Option<String> {
     None
 }
 
-const DASHBOARD_HTML: &str = r##"<!DOCTYPE html>
+const DASHBOARD_HTML: &str = r##"<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -178,460 +178,285 @@ const DASHBOARD_HTML: &str = r##"<!DOCTYPE html>
 <title>flashwatch — Base Flashblocks Dashboard</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
-    background: #0a0a0f;
-    color: #e0e0e0;
-    overflow-x: hidden;
-  }
-  .header {
-    padding: 20px 32px;
-    border-bottom: 1px solid #1a1a2e;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .header h1 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #fff;
-  }
+  body { font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace; background: #0a0a0f; color: #e0e0e0; overflow-x: hidden; }
+  .header { padding: 20px 32px; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
   .header h1 span { color: #fbbf24; }
-  .status {
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 12px;
-    background: #1a1a2e;
-  }
+  .header .sub { font-size: 12px; color: #6b7280; margin-left: auto; }
+  .status { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #1a1a2e; }
   .status.connected { color: #4ade80; border: 1px solid #166534; }
   .status.disconnected { color: #f87171; border: 1px solid #7f1d1d; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 20px 32px; }
+  .mc { background: #111118; border: 1px solid #1a1a2e; border-radius: 12px; padding: 14px; }
+  .mc .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; margin-bottom: 2px; }
+  .mc .val { font-size: 26px; font-weight: 700; color: #fff; }
+  .mc .sub { font-size: 11px; color: #6b7280; margin-top: 1px; }
+  .val.blue { color: #60a5fa; } .val.green { color: #4ade80; } .val.yellow { color: #fbbf24; } .val.purple { color: #a78bfa; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 32px 20px; }
+  .chart-card { background: #111118; border: 1px solid #1a1a2e; border-radius: 12px; padding: 14px; }
+  .chart-card h3 { font-size: 12px; color: #9ca3af; margin-bottom: 10px; }
+  canvas { width: 100% !important; height: 140px !important; }
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 32px 32px; }
+  .panel h3 { font-size: 12px; color: #9ca3af; margin-bottom: 10px; }
+  .panel-body { background: #111118; border: 1px solid #1a1a2e; border-radius: 12px; overflow-y: auto; font-size: 13px; }
+  .panel-body.short { max-height: 260px; }
+  .panel-body.tall { max-height: 500px; }
 
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    padding: 24px 32px;
-  }
-  .metric-card {
-    background: #111118;
-    border: 1px solid #1a1a2e;
-    border-radius: 12px;
-    padding: 16px;
-  }
-  .metric-card .label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
-    margin-bottom: 4px;
-  }
-  .metric-card .value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #fff;
-  }
-  .metric-card .sub {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 2px;
-  }
-  .value.blue { color: #60a5fa; }
-  .value.green { color: #4ade80; }
-  .value.yellow { color: #fbbf24; }
-  .value.purple { color: #a78bfa; }
+  /* Left: Block feed */
+  .fb-row { padding: 6px 14px; border-bottom: 1px solid #0d0d15; display: flex; gap: 10px; align-items: center; }
+  .fb-row .time { color: #4b5563; min-width: 80px; font-size: 11px; }
+  .fb-row .idx { color: #fbbf24; min-width: 36px; font-weight: 600; }
+  .fb-row .txs { color: #4ade80; min-width: 50px; }
+  .fb-row .gas { color: #60a5fa; min-width: 70px; }
+  .fb-row .blk { color: #a78bfa; font-weight: 600; }
+  .fb-row.new-block { background: rgba(99,102,241,0.06); border-left: 3px solid #6366f1; }
 
-  .charts {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    padding: 0 32px 24px;
-  }
-  .chart-card {
-    background: #111118;
-    border: 1px solid #1a1a2e;
-    border-radius: 12px;
-    padding: 16px;
-  }
-  .chart-card h3 {
-    font-size: 13px;
-    color: #9ca3af;
-    margin-bottom: 12px;
-  }
-  canvas {
-    width: 100% !important;
-    height: 160px !important;
-  }
+  /* Right: Protocol leaderboard */
+  .proto-row { padding: 8px 14px; border-bottom: 1px solid #0d0d15; }
+  .proto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .proto-name { font-weight: 600; font-size: 13px; }
+  .proto-count { color: #6b7280; font-size: 12px; }
+  .proto-bar { height: 6px; border-radius: 3px; background: #1a1a2e; overflow: hidden; }
+  .proto-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 
-  .panels {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    padding: 0 32px 32px;
-  }
-  .feed, .activity {
-  }
-  .feed h3, .activity h3 {
-    font-size: 13px;
-    color: #9ca3af;
-    margin-bottom: 12px;
-  }
-  .feed-list {
-    background: #111118;
-    border: 1px solid #1a1a2e;
-    border-radius: 12px;
-    max-height: 340px;
-    overflow-y: auto;
-    font-size: 13px;
-  }
-  .feed-item {
-    padding: 8px 16px;
-    border-bottom: 1px solid #1a1a2e;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-  .feed-item:last-child { border-bottom: none; }
-  .feed-item .time { color: #6b7280; min-width: 90px; }
-  .feed-item .idx { color: #fbbf24; min-width: 40px; font-weight: 600; }
-  .feed-item .txs { color: #4ade80; min-width: 60px; }
-  .feed-item .gas { color: #60a5fa; min-width: 80px; }
-  .feed-item .block { color: #a78bfa; }
-  .feed-item.new-block {
-    background: rgba(99, 102, 241, 0.08);
-    border-left: 3px solid #6366f1;
-  }
+  /* Notable events */
+  .event-row { padding: 8px 14px; border-bottom: 1px solid #0d0d15; display: flex; gap: 8px; align-items: center; }
+  .event-row .emoji { font-size: 15px; min-width: 22px; }
+  .event-row .desc { color: #e0e0e0; flex: 1; }
+  .event-row .val { color: #4ade80; font-weight: 600; white-space: nowrap; }
+  .event-row .ts { color: #4b5563; font-size: 11px; min-width: 70px; text-align: right; }
+  .event-row.dex { border-left: 3px solid #22d3ee; }
+  .event-row.bridge { border-left: 3px solid #a78bfa; }
+  .event-row.lending { border-left: 3px solid #fbbf24; }
+  .event-row.whale { border-left: 3px solid #f59e0b; background: rgba(245,158,11,0.04); }
+  .event-row.token { border-left: 3px solid #4ade80; }
+  .event-row.nft { border-left: 3px solid #f472b6; }
 
-  .act-item {
-    padding: 8px 16px;
-    border-bottom: 1px solid #1a1a2e;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    font-size: 13px;
-  }
-  .act-item:last-child { border-bottom: none; }
-  .act-item .emoji { font-size: 16px; min-width: 24px; }
-  .act-item .action { color: #e0e0e0; font-weight: 600; }
-  .act-item .target { color: #60a5fa; }
-  .act-item .val { color: #4ade80; }
-  .act-item .addr { color: #6b7280; font-size: 11px; }
-  .act-item.whale {
-    background: rgba(251, 191, 36, 0.08);
-    border-left: 3px solid #fbbf24;
-  }
-  .act-item.dex { border-left: 3px solid #22d3ee; }
-  .act-item.bridge { border-left: 3px solid #a78bfa; }
-  .act-item.lending { border-left: 3px solid #fbbf24; }
-  .act-item.nft { border-left: 3px solid #f472b6; }
+  /* Block summary cards */
+  .block-card { padding: 10px 14px; border-bottom: 1px solid #1a1a2e; }
+  .block-card .block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .block-card .block-num { color: #60a5fa; font-weight: 700; font-size: 14px; }
+  .block-card .block-time { color: #4b5563; font-size: 11px; }
+  .block-card .block-stats { display: flex; gap: 14px; font-size: 12px; color: #9ca3af; }
+  .block-card .block-stats span { display: flex; align-items: center; gap: 3px; }
+  .block-card .block-protos { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .block-card .proto-tag { font-size: 10px; padding: 2px 8px; border-radius: 8px; background: #1a1a2e; color: #9ca3af; }
+  .proto-tag.dex { color: #22d3ee; border: 1px solid #164e63; }
+  .proto-tag.bridge { color: #a78bfa; border: 1px solid #4c1d95; }
+  .proto-tag.lending { color: #fbbf24; border: 1px solid #713f12; }
+  .proto-tag.token { color: #4ade80; border: 1px solid #166534; }
 
-  @media (max-width: 768px) {
-    .charts { grid-template-columns: 1fr; }
-    .metrics { grid-template-columns: repeat(2, 1fr); }
-    .panels { grid-template-columns: 1fr; }
+  @media (max-width: 900px) {
+    .charts, .panels { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
 <body>
-
 <div class="header">
   <h1>⚡ flash<span>watch</span></h1>
   <div class="status disconnected" id="status">Connecting...</div>
+  <div class="sub">Base L2 · 200ms flashblocks · live</div>
 </div>
 
 <div class="metrics">
-  <div class="metric-card">
-    <div class="label">Block</div>
-    <div class="value blue" id="m-block">—</div>
-    <div class="sub" id="m-block-sub">waiting for data</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Flashblocks / block</div>
-    <div class="value yellow" id="m-fb-count">—</div>
-    <div class="sub" id="m-fb-rate">—/s</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Transactions</div>
-    <div class="value green" id="m-txs">—</div>
-    <div class="sub" id="m-txs-sub">in current block</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Gas Used</div>
-    <div class="value purple" id="m-gas">—</div>
-    <div class="sub" id="m-gas-sub">cumulative</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Base Fee</div>
-    <div class="value" id="m-basefee">—</div>
-    <div class="sub">gwei</div>
-  </div>
-  <div class="metric-card">
-    <div class="label">Blocks Seen</div>
-    <div class="value" id="m-blocks">0</div>
-    <div class="sub" id="m-uptime">—</div>
-  </div>
+  <div class="mc"><div class="label">Block</div><div class="val blue" id="m-block">—</div><div class="sub" id="m-block-sub">waiting</div></div>
+  <div class="mc"><div class="label">Flashblocks</div><div class="val yellow" id="m-fb-count">—</div><div class="sub" id="m-fb-rate">—/s</div></div>
+  <div class="mc"><div class="label">Transactions</div><div class="val green" id="m-txs">—</div><div class="sub">in current block</div></div>
+  <div class="mc"><div class="label">Gas Used</div><div class="val purple" id="m-gas">—</div><div class="sub">cumulative</div></div>
+  <div class="mc"><div class="label">Base Fee</div><div class="val" id="m-basefee">—</div><div class="sub">gwei</div></div>
+  <div class="mc"><div class="label">Blocks</div><div class="val" id="m-blocks">0</div><div class="sub" id="m-uptime">—</div></div>
 </div>
 
 <div class="charts">
-  <div class="chart-card">
-    <h3>Transactions per Flashblock</h3>
-    <canvas id="chart-txs"></canvas>
-  </div>
-  <div class="chart-card">
-    <h3>Gas Used (cumulative within block)</h3>
-    <canvas id="chart-gas"></canvas>
-  </div>
+  <div class="chart-card"><h3>Transactions per Flashblock</h3><canvas id="chart-txs"></canvas></div>
+  <div class="chart-card"><h3>Gas Used per Flashblock</h3><canvas id="chart-gas"></canvas></div>
 </div>
 
 <div class="panels">
-  <div class="feed">
-    <h3>Live Feed</h3>
-    <div class="feed-list" id="feed"></div>
+  <div class="panel">
+    <h3>Protocol Activity (rolling 30s)</h3>
+    <div class="panel-body short" id="leaderboard"></div>
+    <h3 style="margin-top:14px">Recent Blocks</h3>
+    <div class="panel-body short" id="block-summary"></div>
   </div>
-  <div class="activity">
-    <h3>⚡ Activity — Decoded Transactions</h3>
-    <div class="feed-list" id="activity"></div>
+  <div class="panel">
+    <h3>🔔 Notable Events</h3>
+    <div class="panel-body tall" id="events"></div>
   </div>
 </div>
 
 <script>
-const MAX_POINTS = 80;
-const MAX_FEED = 100;
+const MAX_POINTS=80, MAX_EVENTS=60, MAX_BLOCKS=20;
+const PROTO_COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',nft:'#f472b6',system:'#4b5563',unknown:'#6b7280'};
+const EMOJI={dex:'🔄',bridge:'🌉',token:'💰',lending:'🏦',nft:'🖼️',system:'⚙️',unknown:'📦'};
 
-let state = {
-  currentPayload: null,
-  blockNumber: null,
-  fbCount: 0,
-  txsInBlock: 0,
-  gasInBlock: 0,
-  baseFee: null,
-  blocksTotal: 0,
-  totalFb: 0,
-  startTime: Date.now(),
-  txsHistory: [],
-  gasHistory: [],
+let S={currentPayload:null,blockNumber:null,fbCount:0,txsInBlock:0,gasInBlock:0,
+  baseFee:null,blocksTotal:0,totalFb:0,startTime:Date.now(),
+  txsHistory:[],gasHistory:[],
+  protoActivity:{},protoWindow:[],
+  currentBlockTxs:0,currentBlockGas:0,currentBlockProtos:{},currentBlockStart:null,
 };
 
-// Simple canvas chart
-function drawChart(canvasId, data, color, filled = true) {
-  const canvas = document.getElementById(canvasId);
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  const w = rect.width, h = rect.height;
-
-  ctx.clearRect(0, 0, w, h);
-  if (data.length < 2) return;
-
-  const max = Math.max(...data, 1);
-  const step = w / (MAX_POINTS - 1);
-
-  ctx.beginPath();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-
-  const startIdx = Math.max(0, data.length - MAX_POINTS);
-  for (let i = startIdx; i < data.length; i++) {
-    const x = (i - startIdx) * step;
-    const y = h - (data[i] / max) * (h - 10) - 5;
-    if (i === startIdx) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+function drawChart(id,data,color){
+  const c=document.getElementById(id),ctx=c.getContext('2d');
+  const dpr=devicePixelRatio||1,r=c.getBoundingClientRect();
+  c.width=r.width*dpr;c.height=r.height*dpr;ctx.scale(dpr,dpr);
+  const w=r.width,h=r.height;ctx.clearRect(0,0,w,h);
+  if(data.length<2)return;
+  const max=Math.max(...data,1),step=w/(MAX_POINTS-1);
+  const si=Math.max(0,data.length-MAX_POINTS);
+  ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;
+  for(let i=si;i<data.length;i++){
+    const x=(i-si)*step,y=h-(data[i]/max)*(h-10)-5;
+    i===si?ctx.moveTo(x,y):ctx.lineTo(x,y);
   }
   ctx.stroke();
+  ctx.lineTo((data.length-1-si)*step,h);ctx.lineTo(0,h);ctx.closePath();
+  ctx.fillStyle=color.replace('1)','0.08)');ctx.fill();
+  ctx.fillStyle='#4b5563';ctx.font='10px monospace';ctx.fillText(fmtN(max),4,12);
+}
+function fmtN(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n}
+function fmtG(n){return n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n}
+function ts(){const d=new Date();return d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0')}
 
-  if (filled) {
-    ctx.lineTo((data.length - 1 - startIdx) * step, h);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-    ctx.fillStyle = color.replace('1)', '0.1)');
-    ctx.fill();
-  }
-
-  // Max label
-  ctx.fillStyle = '#6b7280';
-  ctx.font = '10px monospace';
-  ctx.fillText(formatNum(max), 4, 12);
+function updateUI(){
+  document.getElementById('m-block').textContent=S.blockNumber??'—';
+  document.getElementById('m-fb-count').textContent=S.fbCount;
+  document.getElementById('m-txs').textContent=S.txsInBlock;
+  document.getElementById('m-gas').textContent=fmtG(S.gasInBlock);
+  document.getElementById('m-basefee').textContent=S.baseFee!=null?S.baseFee.toFixed(4):'—';
+  document.getElementById('m-blocks').textContent=S.blocksTotal;
+  const el=Math.floor((Date.now()-S.startTime)/1000);
+  document.getElementById('m-uptime').textContent=Math.floor(el/60)+'m '+el%60+'s';
+  if(S.totalFb>0)document.getElementById('m-fb-rate').textContent=(S.totalFb/(el||1)).toFixed(1)+'/s';
+  drawChart('chart-txs',S.txsHistory,'rgba(74,222,128,1)');
+  drawChart('chart-gas',S.gasHistory,'rgba(96,165,250,1)');
+  renderLeaderboard();
 }
 
-function formatNum(n) {
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-  return n.toString();
-}
-
-function formatGas(n) {
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-  return n.toString();
-}
-
-function updateUI() {
-  document.getElementById('m-block').textContent = state.blockNumber ?? '—';
-  document.getElementById('m-fb-count').textContent = state.fbCount;
-  document.getElementById('m-txs').textContent = state.txsInBlock;
-  document.getElementById('m-gas').textContent = formatGas(state.gasInBlock);
-  document.getElementById('m-basefee').textContent =
-    state.baseFee != null ? state.baseFee.toFixed(4) : '—';
-  document.getElementById('m-blocks').textContent = state.blocksTotal;
-
-  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
-  const min = Math.floor(elapsed / 60);
-  const sec = elapsed % 60;
-  document.getElementById('m-uptime').textContent =
-    `${min}m ${sec}s uptime`;
-
-  if (state.totalFb > 0) {
-    const rate = (state.totalFb / (elapsed || 1)).toFixed(1);
-    document.getElementById('m-fb-rate').textContent = rate + '/s';
-  }
-
-  drawChart('chart-txs', state.txsHistory, 'rgba(74, 222, 128, 1)');
-  drawChart('chart-gas', state.gasHistory, 'rgba(96, 165, 250, 1)');
-}
-
-function addFeedItem(fb) {
-  const feed = document.getElementById('feed');
-  const div = document.createElement('div');
-  div.className = 'feed-item' + (fb.index === 0 ? ' new-block' : '');
-
-  const now = new Date();
-  const time = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
-  const txCount = fb.diff?.transactions?.length ?? 0;
-  const gasHex = fb.diff?.gas_used ?? '0x0';
-  const gas = parseInt(gasHex, 16);
-  const blockNum = fb.base?.block_number ? parseInt(fb.base.block_number, 16) : state.blockNumber;
-
-  div.innerHTML = `
-    <span class="time">${time}</span>
-    <span class="idx">fb${fb.index}</span>
-    <span class="txs">${txCount} txs</span>
-    <span class="gas">${formatGas(gas)} gas</span>
-    ${fb.index === 0 ? `<span class="block">▸ block ${blockNum}</span>` : ''}
-  `;
-
-  feed.insertBefore(div, feed.firstChild);
-  while (feed.children.length > MAX_FEED) {
-    feed.removeChild(feed.lastChild);
+function renderLeaderboard(){
+  // Expire old entries (>30s)
+  const now=Date.now();
+  S.protoWindow=S.protoWindow.filter(e=>now-e.t<30000);
+  // Aggregate
+  const counts={};
+  for(const e of S.protoWindow){counts[e.n]=(counts[e.n]||0)+1;}
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxC=sorted.length?sorted[0][1]:1;
+  const lb=document.getElementById('leaderboard');
+  lb.innerHTML='';
+  if(!sorted.length){lb.innerHTML='<div style="padding:14px;color:#4b5563">Waiting for protocol activity...</div>';return;}
+  for(const [name,count] of sorted){
+    const cat=S.protoActivity[name]||'unknown';
+    const color=PROTO_COLORS[cat]||'#6b7280';
+    const pct=Math.round(count/maxC*100);
+    const d=document.createElement('div');d.className='proto-row';
+    d.innerHTML=`<div class="proto-header"><span class="proto-name" style="color:${color}">${EMOJI[cat]||'📦'} ${name}</span><span class="proto-count">${count} txs</span></div><div class="proto-bar"><div class="proto-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+    lb.appendChild(d);
   }
 }
 
-function handleMessage(fb) {
-  // New block?
-  if (fb.payload_id !== state.currentPayload) {
-    if (state.currentPayload) state.blocksTotal++;
-    state.currentPayload = fb.payload_id;
-    state.fbCount = 0;
-    state.txsInBlock = 0;
-    state.gasInBlock = 0;
-  }
-
-  state.fbCount++;
-  state.totalFb++;
-
-  const txCount = fb.diff?.transactions?.length ?? 0;
-  state.txsInBlock += txCount;
-  state.txsHistory.push(txCount);
-  if (state.txsHistory.length > MAX_POINTS * 2) {
-    state.txsHistory = state.txsHistory.slice(-MAX_POINTS);
-  }
-
-  const gas = parseInt(fb.diff?.gas_used ?? '0x0', 16);
-  state.gasInBlock += gas;
-  state.gasHistory.push(gas);
-  if (state.gasHistory.length > MAX_POINTS * 2) {
-    state.gasHistory = state.gasHistory.slice(-MAX_POINTS);
-  }
-
-  if (fb.base?.block_number) {
-    state.blockNumber = parseInt(fb.base.block_number, 16);
-  }
-  if (fb.base?.base_fee_per_gas) {
-    state.baseFee = parseInt(fb.base.base_fee_per_gas, 16) / 1e9;
-  }
-
-  addFeedItem(fb);
-  addDecodedTxs(fb);
-  updateUI();
+function sealBlock(){
+  if(!S.currentBlockStart)return;
+  const bs=document.getElementById('block-summary');
+  const d=document.createElement('div');d.className='block-card';
+  const protos=Object.entries(S.currentBlockProtos).sort((a,b)=>b[1]-a[1]);
+  const protoTags=protos.slice(0,5).map(([n,c])=>{
+    const cat=S.protoActivity[n]||'unknown';
+    return `<span class="proto-tag ${cat}">${n} ×${c}</span>`;
+  }).join('');
+  d.innerHTML=`<div class="block-head"><span class="block-num">Block ${S.blockNumber}</span><span class="block-time">${ts()}</span></div><div class="block-stats"><span>📦 ${S.currentBlockTxs} txs</span><span>⛽ ${fmtG(S.currentBlockGas)}</span><span>⚡ ${S.fbCount} fb</span></div>${protoTags?`<div class="block-protos">${protoTags}</div>`:''}`;
+  bs.insertBefore(d,bs.firstChild);
+  while(bs.children.length>MAX_BLOCKS)bs.removeChild(bs.lastChild);
 }
 
-function addDecodedTxs(fb) {
-  const activity = document.getElementById('activity');
-  const txs = fb._decoded_txs || [];
+function addEvent(emoji,desc,value,cat){
+  const el=document.getElementById('events');
+  const d=document.createElement('div');
+  d.className='event-row '+(cat||'');
+  d.innerHTML=`<span class="emoji">${emoji}</span><span class="desc">${desc}</span>${value?`<span class="val">${value}</span>`:''}<span class="ts">${ts()}</span>`;
+  el.insertBefore(d,el.firstChild);
+  while(el.children.length>MAX_EVENTS)el.removeChild(el.lastChild);
+}
 
-  for (const tx of txs) {
-    if (tx.raw) continue; // skip unparsed
-    if (!tx.action && tx.value_eth < 0.01) continue; // skip boring txs
+function handleMessage(fb){
+  // New block
+  if(fb.payload_id!==S.currentPayload){
+    if(S.currentPayload)sealBlock();
+    S.blocksTotal++;S.currentPayload=fb.payload_id;
+    S.fbCount=0;S.txsInBlock=0;S.gasInBlock=0;
+    S.currentBlockTxs=0;S.currentBlockGas=0;S.currentBlockProtos={};S.currentBlockStart=Date.now();
+  }
+  S.fbCount++;S.totalFb++;
+  const txC=fb.diff?.transactions?.length??0;
+  S.txsInBlock+=txC;S.currentBlockTxs+=txC;
+  S.txsHistory.push(txC);if(S.txsHistory.length>MAX_POINTS*2)S.txsHistory=S.txsHistory.slice(-MAX_POINTS);
+  const gas=parseInt(fb.diff?.gas_used??'0x0',16);
+  S.gasInBlock+=gas;S.currentBlockGas+=gas;
+  S.gasHistory.push(gas);if(S.gasHistory.length>MAX_POINTS*2)S.gasHistory=S.gasHistory.slice(-MAX_POINTS);
+  if(fb.base?.block_number)S.blockNumber=parseInt(fb.base.block_number,16);
+  if(fb.base?.base_fee_per_gas)S.baseFee=parseInt(fb.base.base_fee_per_gas,16)/1e9;
 
-    const div = document.createElement('div');
-    const cat = tx.category || 'unknown';
-    div.className = 'act-item ' + cat;
+  // Process decoded txs
+  const now=Date.now();
+  for(const tx of (fb._decoded_txs||[])){
+    if(tx.raw)continue;
+    const label=tx.to_label;
+    if(label){
+      const name=label.name;
+      const cat=tx.category||'unknown';
+      S.protoWindow.push({t:now,n:name});
+      S.protoActivity[name]=cat;
+      S.currentBlockProtos[name]=(S.currentBlockProtos[name]||0)+1;
+    }
+    // Notable event thresholds
+    const action=tx.action||'';
+    const target=label?label.name:(tx.to?tx.to.slice(0,10)+'…':'???');
+    const cat=tx.category||'unknown';
 
-    const emoji = {dex:'🔄', bridge:'🌉', token:'💰', lending:'🏦', nft:'🖼️', system:'⚙️', unknown:'📦'}[cat] || '📦';
-    const target = tx.to_label ? tx.to_label.name : (tx.to ? tx.to.slice(0, 10) + '…' : '???');
-    const action = tx.action || (tx.value_eth > 0 ? 'ETH transfer' : 'call');
-    const value = tx.value_eth > 0.001 ? `${tx.value_eth.toFixed(4)} ETH` : '';
-
-    div.innerHTML = `
-      <span class="emoji">${emoji}</span>
-      <span class="action">${action}</span>
-      <span class="target">→ ${target}</span>
-      ${value ? `<span class="val">${value}</span>` : ''}
-    `;
-
-    activity.insertBefore(div, activity.firstChild);
-    while (activity.children.length > MAX_FEED) {
-      activity.removeChild(activity.lastChild);
+    // Big ETH transfers (>0.5 ETH)
+    if(tx.value_eth>0.5){
+      addEvent('💸',`${action||'Transfer'} → ${target}`,tx.value_eth.toFixed(4)+' ETH',cat);
+    }
+    // DEX swaps (always notable if labeled)
+    else if(cat==='dex'&&action){
+      addEvent('🔄',`${action} → ${target}`,'',cat);
+    }
+    // Bridge activity
+    else if(cat==='bridge'){
+      addEvent('🌉',`${action||'Bridge'} → ${target}`,tx.value_eth>0.001?tx.value_eth.toFixed(4)+' ETH':'',cat);
+    }
+    // Lending
+    else if(cat==='lending'&&action){
+      addEvent('🏦',`${action} → ${target}`,'',cat);
+    }
+    // NFT
+    else if(cat==='nft'&&action){
+      addEvent('🖼️',`${action} → ${target}`,'',cat);
     }
   }
 
   // Whale alerts
-  const whales = fb._whale_alerts || [];
-  for (const w of whales) {
-    const div = document.createElement('div');
-    div.className = 'act-item whale';
-    div.innerHTML = `
-      <span class="emoji">🐋</span>
-      <span class="action">Balance change</span>
-      <span class="addr">${w.address.slice(0, 10)}…</span>
-      <span class="val">${w.balance_eth} ETH</span>
-    `;
-    activity.insertBefore(div, activity.firstChild);
-  }
-}
-
-// WebSocket connection
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${proto}://${location.host}/ws`);
-  const statusEl = document.getElementById('status');
-
-  ws.onopen = () => {
-    statusEl.textContent = 'Connected';
-    statusEl.className = 'status connected';
-  };
-
-  ws.onclose = () => {
-    statusEl.textContent = 'Disconnected — reconnecting...';
-    statusEl.className = 'status disconnected';
-    setTimeout(connect, 2000);
-  };
-
-  ws.onerror = () => ws.close();
-
-  ws.onmessage = (e) => {
-    try {
-      const fb = JSON.parse(e.data);
-      handleMessage(fb);
-    } catch (err) {
-      console.error('Parse error:', err);
+  for(const w of (fb._whale_alerts||[])){
+    if(parseFloat(w.balance_eth)>5){
+      addEvent('🐋',`Whale balance: ${w.address.slice(0,10)}…`,w.balance_eth+' ETH','whale');
     }
-  };
+  }
+
+  updateUI();
 }
 
+function connect(){
+  const ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`);
+  const st=document.getElementById('status');
+  ws.onopen=()=>{st.textContent='Connected';st.className='status connected';};
+  ws.onclose=()=>{st.textContent='Reconnecting...';st.className='status disconnected';setTimeout(connect,2000);};
+  ws.onerror=()=>ws.close();
+  ws.onmessage=e=>{try{handleMessage(JSON.parse(e.data))}catch(err){console.error(err)}};
+}
 connect();
-setInterval(updateUI, 1000);
+setInterval(updateUI,1000);
 </script>
 </body>
 </html>
