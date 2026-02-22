@@ -1,15 +1,30 @@
-//! Transaction lifecycle tracking — from submission to flashblock to canonical block.
+//! Transaction lifecycle tracking.
 
+use std::io::Read;
 use std::time::{Duration, Instant};
 
 use colored::Colorize;
-use futures_util::{SinkExt, StreamExt};
+use futures_util::StreamExt;
 use serde_json::json;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::rpc;
-use crate::types::{Flashblock, JsonRpcNotification};
+use crate::types::FlashblockMessage;
+
+fn decode_message(data: &[u8]) -> Option<String> {
+    if let Ok(text) = std::str::from_utf8(data) {
+        if text.trim_start().starts_with('{') {
+            return Some(text.to_owned());
+        }
+    }
+    let mut decompressor = brotli::Decompressor::new(data, 4096);
+    let mut decompressed = Vec::new();
+    if decompressor.read_to_end(&mut decompressed).is_ok() {
+        return String::from_utf8(decompressed).ok();
+    }
+    None
+}
 
 /// Track a transaction through its lifecycle.
 pub async fn track(ws_url: &str, rpc_url: &str, tx_hash: &str) -> eyre::Result<()> {
@@ -20,7 +35,7 @@ pub async fn track(ws_url: &str, rpc_url: &str, tx_hash: &str) -> eyre::Result<(
     );
     println!("{}", "─".repeat(60));
 
-    // First check if it's already confirmed
+    // First check if already confirmed
     let receipt: Option<serde_json::Value> =
         rpc::call(rpc_url, "eth_getTransactionReceipt", json!([tx_hash]))
             .await
@@ -46,28 +61,15 @@ pub async fn track(ws_url: &str, rpc_url: &str, tx_hash: &str) -> eyre::Result<(
             "❌ Failed".red()
         };
 
-        println!("  {} Already confirmed in block {}", status_display, block);
+        println!("  {} Confirmed in block {}", status_display, block);
         println!("  {} {}", "Gas used:".bold(), gas);
         return Ok(());
     }
 
-    // Not confirmed yet — watch for it in flashblocks
+    // Watch flashblocks feed for it
     println!("  {} Not yet confirmed. Watching flashblocks...", "⏳".yellow());
 
     let (mut ws, _) = connect_async(ws_url).await?;
-
-    let subscribe = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "eth_subscribe",
-        "params": ["newFlashblocks"]
-    });
-    ws.send(Message::Text(subscribe.to_string().into())).await?;
-
-    if let Some(Ok(msg)) = ws.next().await {
-        debug!("Subscription response: {}", msg);
-    }
-
     let start = Instant::now();
     let timeout = Duration::from_secs(120);
     let tx_hash_lower = tx_hash.to_lowercase();
@@ -78,85 +80,68 @@ pub async fn track(ws_url: &str, rpc_url: &str, tx_hash: &str) -> eyre::Result<(
             break;
         }
 
-        let text = match msg {
-            Message::Text(t) => t.to_string(),
+        let data = match msg {
+            Message::Text(t) => t.as_bytes().to_vec(),
+            Message::Binary(b) => b.to_vec(),
+            Message::Ping(_) | Message::Pong(_) => continue,
+            Message::Close(_) => break,
             _ => continue,
         };
 
-        let notification: JsonRpcNotification = match serde_json::from_str(&text) {
-            Ok(n) => n,
+        let text = match decode_message(&data) {
+            Some(t) => t,
+            None => continue,
+        };
+
+        let fb: FlashblockMessage = match serde_json::from_str(&text) {
+            Ok(fb) => fb,
             Err(_) => continue,
         };
 
-        if let Some(params) = notification.params {
-            let flashblock: Flashblock = match serde_json::from_value(params.result) {
-                Ok(fb) => fb,
-                Err(_) => continue,
-            };
+        // Check transactions in this diff — they may be raw RLP bytes
+        for tx in &fb.diff.transactions {
+            let tx_str = tx.as_str().unwrap_or("");
+            // Raw transactions won't have a hash directly — we'd need to decode RLP
+            // For now check if the hash appears in any string representation
+            if tx_str.to_lowercase().contains(&tx_hash_lower[2..]) {
+                let elapsed = start.elapsed();
+                println!(
+                    "  {} Found in flashblock #{} after {:.0}ms",
+                    "⚡ Pre-confirmed".green().bold(),
+                    fb.index,
+                    elapsed.as_millis(),
+                );
 
-            // Check if our tx is in this flashblock
-            if let Some(serde_json::Value::Array(txs)) = &flashblock.transactions {
-                let found = txs.iter().any(|tx| {
-                    let hash = tx.as_str().unwrap_or(
-                        tx.get("hash").and_then(|h| h.as_str()).unwrap_or(""),
-                    );
-                    hash.to_lowercase() == tx_hash_lower
-                });
-
-                if found {
-                    let elapsed = start.elapsed();
-                    let block_num = flashblock
-                        .block_number()
-                        .map(|n| n.to_string())
-                        .unwrap_or("?".into());
-
-                    println!(
-                        "  {} Found in flashblock! block={} after {:.0}ms",
-                        "⚡ Pre-confirmed".green().bold(),
-                        block_num.cyan(),
-                        elapsed.as_millis(),
-                    );
-                    println!(
-                        "    {} {} txs in this flashblock",
-                        "Context:".dimmed(),
-                        txs.len(),
-                    );
-
-                    // Now wait for canonical confirmation
-                    info!("Waiting for canonical block confirmation...");
-                    println!("  {} Waiting for canonical block...", "⏳".yellow());
-
-                    loop {
-                        tokio::time::sleep(Duration::from_secs(1)).await;
-                        if let Ok(receipt) = rpc::call::<serde_json::Value>(
-                            rpc_url,
-                            "eth_getTransactionReceipt",
-                            json!([tx_hash]),
-                        )
-                        .await
-                        {
-                            let total = start.elapsed();
-                            let block = receipt
-                                .get("blockNumber")
-                                .and_then(|b| b.as_str())
-                                .unwrap_or("?");
-                            println!(
-                                "  {} Canonical in block {} after {:.1}s total",
-                                "✅ Confirmed".green().bold(),
-                                block.cyan(),
-                                total.as_secs_f64(),
-                            );
-                            break;
-                        }
-
-                        if start.elapsed() > timeout {
-                            println!("  {} Timeout waiting for canonical confirmation", "⏰".red());
-                            break;
-                        }
+                // Wait for canonical confirmation
+                println!("  {} Waiting for canonical block...", "⏳".yellow());
+                loop {
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    if let Ok(receipt) = rpc::call::<serde_json::Value>(
+                        rpc_url,
+                        "eth_getTransactionReceipt",
+                        json!([tx_hash]),
+                    )
+                    .await
+                    {
+                        let total = start.elapsed();
+                        let block = receipt
+                            .get("blockNumber")
+                            .and_then(|b| b.as_str())
+                            .unwrap_or("?");
+                        println!(
+                            "  {} Block {} — {:.1}s total",
+                            "✅ Canonical".green().bold(),
+                            block.cyan(),
+                            total.as_secs_f64(),
+                        );
+                        break;
                     }
-
-                    break;
+                    if start.elapsed() > timeout {
+                        println!("  {} Timeout waiting for canonical", "⏰".red());
+                        break;
+                    }
                 }
+                return Ok(());
             }
         }
     }

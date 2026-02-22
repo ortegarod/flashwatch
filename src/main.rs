@@ -20,7 +20,7 @@ struct Cli {
         short,
         long,
         env = "BASE_WS_URL",
-        default_value = "wss://base-mainnet.g.alchemy.com/v2/demo"
+        default_value = "wss://mainnet.flashblocks.base.org/ws"
     )]
     url: String,
 
