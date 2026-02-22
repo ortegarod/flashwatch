@@ -6,164 +6,320 @@
 <title>flashwatch — Base Flashblocks Dashboard</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'SF Mono','Fira Code','JetBrains Mono',monospace; background: #0a0a0f; color: #e0e0e0; overflow-x: hidden; }
-  .header { padding: 20px 32px; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; gap: 16px; }
+  :root {
+    --bg: #0a0a0f; --bg1: #111118; --bg2: #1a1a2e; --bg3: #0d0d15;
+    --fg: #e0e0e0; --fg2: #9ca3af; --fg3: #6b7280; --fg4: #4b5563;
+    --blue: #60a5fa; --green: #4ade80; --yellow: #fbbf24; --purple: #a78bfa;
+    --cyan: #22d3ee; --red: #f87171; --pink: #f472b6; --orange: #f59e0b;
+    --font: 'SF Mono','Fira Code','JetBrains Mono',monospace;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--fg); overflow-x: hidden; }
+  a { color: var(--blue); text-decoration: none; }
+
+  /* Header */
+  .header { padding: 16px 32px; border-bottom: 1px solid var(--bg2); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .header h1 { font-size: 20px; font-weight: 600; color: #fff; }
-  .header h1 span { color: #fbbf24; }
-  .header .sub { font-size: 12px; color: #6b7280; margin-left: auto; }
-  .status { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #1a1a2e; }
-  .status.connected { color: #4ade80; border: 1px solid #166534; }
-  .status.disconnected { color: #f87171; border: 1px solid #7f1d1d; }
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 20px 32px; }
-  .mc { background: #111118; border: 1px solid #1a1a2e; border-radius: 12px; padding: 14px; }
-  .mc .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; margin-bottom: 2px; }
-  .mc .val { font-size: 26px; font-weight: 700; color: #fff; }
-  .mc .sub { font-size: 11px; color: #6b7280; margin-top: 1px; }
-  .val.blue { color: #60a5fa; } .val.green { color: #4ade80; } .val.yellow { color: #fbbf24; } .val.purple { color: #a78bfa; }
-  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 32px 20px; }
-  .chart-card { background: #111118; border: 1px solid #1a1a2e; border-radius: 12px; padding: 14px; }
-  .chart-card h3 { font-size: 12px; color: #9ca3af; margin-bottom: 10px; }
-  canvas { width: 100% !important; height: 140px !important; }
-  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 32px 32px; }
-  .panel h3 { font-size: 12px; color: #9ca3af; margin-bottom: 10px; }
-  .panel-body { background: #111118; border: 1px solid #1a1a2e; border-radius: 12px; overflow-y: auto; font-size: 13px; }
-  .panel-body.short { max-height: 260px; }
-  .panel-body.tall { max-height: 500px; }
+  .header h1 span { color: var(--yellow); }
+  .chain-info { display: flex; gap: 12px; font-size: 11px; color: var(--fg3); }
+  .chain-info .ci { padding: 3px 8px; background: var(--bg1); border-radius: 6px; }
+  .header .spacer { flex: 1; }
+  .status { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: var(--bg2); }
+  .status.ok { color: var(--green); border: 1px solid #166534; }
+  .status.err { color: var(--red); border: 1px solid #7f1d1d; }
+  .health-pills { display: flex; gap: 8px; font-size: 11px; color: var(--fg3); }
+  .health-pills .pill { padding: 3px 8px; background: var(--bg1); border-radius: 6px; }
 
-  /* Left: Block feed */
-  .fb-row { padding: 6px 14px; border-bottom: 1px solid #0d0d15; display: flex; gap: 10px; align-items: center; }
-  .fb-row .time { color: #4b5563; min-width: 80px; font-size: 11px; }
-  .fb-row .idx { color: #fbbf24; min-width: 36px; font-weight: 600; }
-  .fb-row .txs { color: #4ade80; min-width: 50px; }
-  .fb-row .gas { color: #60a5fa; min-width: 70px; }
-  .fb-row .blk { color: #a78bfa; font-weight: 600; }
-  .fb-row.new-block { background: rgba(99,102,241,0.06); border-left: 3px solid #6366f1; }
+  /* Metrics bar */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 16px 32px; }
+  .mc { background: var(--bg1); border: 1px solid var(--bg2); border-radius: 10px; padding: 12px; }
+  .mc .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg3); margin-bottom: 2px; }
+  .mc .val { font-size: 22px; font-weight: 700; color: #fff; }
+  .mc .sub { font-size: 10px; color: var(--fg4); margin-top: 1px; }
 
-  /* Right: Protocol leaderboard */
-  .proto-row { padding: 8px 14px; border-bottom: 1px solid #0d0d15; }
-  .proto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-  .proto-name { font-weight: 600; font-size: 13px; }
-  .proto-count { color: #6b7280; font-size: 12px; }
-  .proto-bar { height: 6px; border-radius: 3px; background: #1a1a2e; overflow: hidden; }
+  /* Tabs */
+  .tabs { display: flex; gap: 0; padding: 0 32px; border-bottom: 1px solid var(--bg2); }
+  .tab { padding: 10px 20px; font-size: 12px; font-weight: 600; color: var(--fg3); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: var(--font); background: none; border-top: none; border-left: none; border-right: none; }
+  .tab:hover { color: var(--fg); }
+  .tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Panels */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px 32px; }
+  .panel h3 { font-size: 11px; color: var(--fg2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .panel-body { background: var(--bg1); border: 1px solid var(--bg2); border-radius: 10px; overflow-y: auto; font-size: 12px; }
+  .panel-body.short { max-height: 240px; }
+  .panel-body.med { max-height: 360px; }
+  .panel-body.tall { max-height: 480px; }
+  .full-width { grid-column: 1 / -1; }
+
+  /* Charts */
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 32px 12px; }
+  .chart-card { background: var(--bg1); border: 1px solid var(--bg2); border-radius: 10px; padding: 12px; }
+  .chart-card h3 { font-size: 11px; color: var(--fg2); margin-bottom: 8px; }
+  canvas { width: 100% !important; height: 120px !important; }
+
+  /* Rows */
+  .event-row { padding: 7px 14px; border-bottom: 1px solid var(--bg3); display: flex; gap: 8px; align-items: center; }
+  .event-row .emoji { font-size: 14px; min-width: 20px; }
+  .event-row .desc { color: var(--fg); flex: 1; font-size: 12px; }
+  .event-row .val { color: var(--green); font-weight: 600; white-space: nowrap; font-size: 12px; }
+  .event-row .ts { color: var(--fg4); font-size: 10px; min-width: 65px; text-align: right; }
+  .event-row.dex { border-left: 3px solid var(--cyan); }
+  .event-row.bridge { border-left: 3px solid var(--purple); }
+  .event-row.lending { border-left: 3px solid var(--yellow); }
+  .event-row.whale { border-left: 3px solid var(--orange); background: rgba(245,158,11,0.03); }
+  .event-row.token { border-left: 3px solid var(--green); }
+  .event-row.nft { border-left: 3px solid var(--pink); }
+  .event-row.unknown { border-left: 3px solid var(--fg4); }
+
+  .proto-row { padding: 7px 14px; border-bottom: 1px solid var(--bg3); }
+  .proto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .proto-name { font-weight: 600; font-size: 12px; }
+  .proto-count { color: var(--fg3); font-size: 11px; }
+  .proto-bar { height: 5px; border-radius: 3px; background: var(--bg2); overflow: hidden; }
   .proto-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 
-  /* Notable events */
-  .event-row { padding: 8px 14px; border-bottom: 1px solid #0d0d15; display: flex; gap: 8px; align-items: center; }
-  .event-row .emoji { font-size: 15px; min-width: 22px; }
-  .event-row .desc { color: #e0e0e0; flex: 1; }
-  .event-row .val { color: #4ade80; font-weight: 600; white-space: nowrap; }
-  .event-row .ts { color: #4b5563; font-size: 11px; min-width: 70px; text-align: right; }
-  .event-row.dex { border-left: 3px solid #22d3ee; }
-  .event-row.bridge { border-left: 3px solid #a78bfa; }
-  .event-row.lending { border-left: 3px solid #fbbf24; }
-  .event-row.whale { border-left: 3px solid #f59e0b; background: rgba(245,158,11,0.04); }
-  .event-row.token { border-left: 3px solid #4ade80; }
-  .event-row.nft { border-left: 3px solid #f472b6; }
+  .block-card { padding: 8px 14px; border-bottom: 1px solid var(--bg2); }
+  .block-card .block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .block-card .block-num { color: var(--blue); font-weight: 700; font-size: 13px; }
+  .block-card .block-time { color: var(--fg4); font-size: 10px; }
+  .block-card .block-stats { display: flex; gap: 12px; font-size: 11px; color: var(--fg2); }
+  .block-card .block-protos { margin-top: 3px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .proto-tag { font-size: 9px; padding: 2px 7px; border-radius: 6px; background: var(--bg2); color: var(--fg2); }
+  .proto-tag.dex { color: var(--cyan); border: 1px solid #164e63; }
+  .proto-tag.bridge { color: var(--purple); border: 1px solid #4c1d95; }
+  .proto-tag.lending { color: var(--yellow); border: 1px solid #713f12; }
+  .proto-tag.token { color: var(--green); border: 1px solid #166534; }
 
-  /* Block summary cards */
-  .block-card { padding: 10px 14px; border-bottom: 1px solid #1a1a2e; }
-  .block-card .block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-  .block-card .block-num { color: #60a5fa; font-weight: 700; font-size: 14px; }
-  .block-card .block-time { color: #4b5563; font-size: 11px; }
-  .block-card .block-stats { display: flex; gap: 14px; font-size: 12px; color: #9ca3af; }
-  .block-card .block-stats span { display: flex; align-items: center; gap: 3px; }
-  .block-card .block-protos { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .block-card .proto-tag { font-size: 10px; padding: 2px 8px; border-radius: 8px; background: #1a1a2e; color: #9ca3af; }
-  .proto-tag.dex { color: #22d3ee; border: 1px solid #164e63; }
-  .proto-tag.bridge { color: #a78bfa; border: 1px solid #4c1d95; }
-  .proto-tag.lending { color: #fbbf24; border: 1px solid #713f12; }
-  .proto-tag.token { color: #4ade80; border: 1px solid #166534; }
+  /* Alert filters */
+  .filter-bar { display: flex; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--bg2); flex-wrap: wrap; align-items: center; }
+  .filter-bar select, .filter-bar input { font-family: var(--font); font-size: 11px; padding: 5px 8px; background: var(--bg); border: 1px solid var(--bg2); border-radius: 6px; color: var(--fg); }
+  .filter-bar select:focus, .filter-bar input:focus { outline: none; border-color: var(--blue); }
+  .filter-bar label { font-size: 10px; color: var(--fg3); text-transform: uppercase; }
+  .filter-bar button { font-family: var(--font); font-size: 11px; padding: 5px 12px; background: var(--yellow); color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+
+  /* Stats cards */
+  .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; padding: 16px 32px 8px; }
+  .sc { background: var(--bg1); border: 1px solid var(--bg2); border-radius: 10px; padding: 12px; text-align: center; }
+  .sc .sv { font-size: 28px; font-weight: 700; color: #fff; }
+  .sc .sl { font-size: 9px; text-transform: uppercase; color: var(--fg3); margin-top: 2px; }
+
+  /* Rules panel */
+  .rule-row { padding: 8px 14px; border-bottom: 1px solid var(--bg3); display: flex; gap: 10px; align-items: center; }
+  .rule-row .rule-name { font-weight: 600; color: var(--yellow); min-width: 120px; }
+  .rule-row .rule-trigger { color: var(--fg2); flex: 1; font-size: 11px; }
+  .rule-row .rule-status { font-size: 10px; padding: 2px 8px; border-radius: 8px; }
+  .rule-row .rule-status.on { color: var(--green); background: rgba(74,222,128,0.1); }
+  .rule-row .rule-status.off { color: var(--fg4); background: rgba(75,85,99,0.1); }
+
+  /* Track TX */
+  .track-box { padding: 20px 32px; }
+  .track-input { display: flex; gap: 8px; margin-bottom: 16px; }
+  .track-input input { flex: 1; font-family: var(--font); font-size: 13px; padding: 10px 14px; background: var(--bg1); border: 1px solid var(--bg2); border-radius: 8px; color: var(--fg); }
+  .track-input input:focus { outline: none; border-color: var(--blue); }
+  .track-input button { font-family: var(--font); font-size: 13px; padding: 10px 20px; background: var(--blue); color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .track-result { background: var(--bg1); border: 1px solid var(--bg2); border-radius: 10px; padding: 16px; }
+  .track-result .tr-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--bg3); font-size: 12px; }
+  .track-result .tr-label { color: var(--fg3); }
+  .track-result .tr-value { color: var(--fg); font-weight: 600; }
+
+  .empty-msg { padding: 20px; color: var(--fg4); text-align: center; }
 
   @media (max-width: 900px) {
     .charts, .panels { grid-template-columns: 1fr; }
     .metrics { grid-template-columns: repeat(3, 1fr); }
+    .stat-cards { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
 <body>
+
+<!-- HEADER -->
 <div class="header">
   <h1>⚡ flash<span>watch</span></h1>
-  <div class="status disconnected" id="status">Connecting...</div>
-  <div class="sub">Base L2 · 200ms flashblocks · live</div>
+  <div class="chain-info" id="chain-info">
+    <span class="ci">Base L2</span>
+    <span class="ci" id="ci-block">—</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="health-pills" id="health-pills">
+    <span class="pill" id="hp-fb">0 fb</span>
+    <span class="pill" id="hp-blocks">0 blocks</span>
+    <span class="pill" id="hp-reconnects">0 reconn</span>
+  </div>
+  <div class="status err" id="status">Connecting...</div>
 </div>
 
+<!-- METRICS -->
 <div class="metrics">
-  <div class="mc"><div class="label">Block</div><div class="val blue" id="m-block">—</div><div class="sub" id="m-block-sub">waiting</div></div>
-  <div class="mc"><div class="label">Flashblocks</div><div class="val yellow" id="m-fb-count">—</div><div class="sub" id="m-fb-rate">—/s</div></div>
-  <div class="mc"><div class="label">Transactions</div><div class="val green" id="m-txs">—</div><div class="sub">in current block</div></div>
-  <div class="mc"><div class="label">Gas Used</div><div class="val purple" id="m-gas">—</div><div class="sub">cumulative</div></div>
+  <div class="mc"><div class="label">Block</div><div class="val" style="color:var(--blue)" id="m-block">—</div><div class="sub" id="m-block-sub">waiting</div></div>
+  <div class="mc"><div class="label">Flashblocks</div><div class="val" style="color:var(--yellow)" id="m-fb-count">—</div><div class="sub" id="m-fb-rate">—/s</div></div>
+  <div class="mc"><div class="label">Transactions</div><div class="val" style="color:var(--green)" id="m-txs">—</div><div class="sub">in current block</div></div>
+  <div class="mc"><div class="label">Gas Used</div><div class="val" style="color:var(--purple)" id="m-gas">—</div><div class="sub">cumulative</div></div>
   <div class="mc"><div class="label">Base Fee</div><div class="val" id="m-basefee">—</div><div class="sub">gwei</div></div>
-  <div class="mc"><div class="label">Blocks</div><div class="val" id="m-blocks">0</div><div class="sub" id="m-uptime">—</div></div>
+  <div class="mc"><div class="label">Uptime</div><div class="val" id="m-uptime" style="font-size:18px">—</div><div class="sub" id="m-uptime-sub">—</div></div>
 </div>
 
-<div class="charts">
-  <div class="chart-card"><h3>Transactions per Flashblock</h3><canvas id="chart-txs"></canvas></div>
-  <div class="chart-card"><h3>Gas Used per Flashblock</h3><canvas id="chart-gas"></canvas></div>
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-tab="live">Live Feed</button>
+  <button class="tab" data-tab="alerts">Alerts</button>
+  <button class="tab" data-tab="analytics">Analytics</button>
+  <button class="tab" data-tab="track">Track TX</button>
 </div>
 
-<div class="panels">
-  <div class="panel">
-    <h3>Protocol Activity (rolling 30s)</h3>
-    <div class="panel-body short" id="leaderboard"></div>
-    <h3 style="margin-top:14px">Recent Blocks</h3>
-    <div class="panel-body short" id="block-summary"></div>
+<!-- TAB: LIVE -->
+<div class="tab-content active" id="tab-live">
+  <div class="charts">
+    <div class="chart-card"><h3>Transactions per Flashblock</h3><canvas id="chart-txs"></canvas></div>
+    <div class="chart-card"><h3>Gas Used per Flashblock</h3><canvas id="chart-gas"></canvas></div>
   </div>
-  <div class="panel">
-    <h3>🔔 Notable Events</h3>
-    <div class="panel-body tall" id="events"></div>
+  <div class="panels">
+    <div class="panel">
+      <h3>Protocol Activity (rolling 30s)</h3>
+      <div class="panel-body short" id="leaderboard"></div>
+      <h3 style="margin-top:12px">Recent Blocks</h3>
+      <div class="panel-body short" id="block-summary"></div>
+    </div>
+    <div class="panel">
+      <h3>Notable Events</h3>
+      <div class="panel-body tall" id="events"></div>
+    </div>
   </div>
 </div>
 
-<div class="panels">
-  <div class="panel" style="grid-column: 1 / -1">
-    <h3>🚨 Alert History <span id="alert-count" style="color:#6b7280;font-weight:400"></span></h3>
-    <div class="panel-body short" id="alert-history" style="max-height:300px"></div>
+<!-- TAB: ALERTS -->
+<div class="tab-content" id="tab-alerts">
+  <div class="stat-cards" id="alert-stats"></div>
+  <div class="panels" style="padding-top:8px">
+    <div class="panel full-width">
+      <h3>Alert Feed</h3>
+      <div class="panel-body">
+        <div class="filter-bar">
+          <label>Rule</label>
+          <select id="f-rule"><option value="">All</option></select>
+          <label>Category</label>
+          <select id="f-category"><option value="">All</option><option value="dex">DEX</option><option value="bridge">Bridge</option><option value="lending">Lending</option><option value="token">Token</option><option value="unknown">Unknown</option></select>
+          <label>Min ETH</label>
+          <input type="number" id="f-min-eth" placeholder="0" step="0.1" style="width:70px">
+          <label>Last</label>
+          <select id="f-last"><option value="">All time</option><option value="1h">1 hour</option><option value="6h">6 hours</option><option value="24h">24 hours</option><option value="7d">7 days</option></select>
+          <button onclick="fetchAlerts()">Filter</button>
+        </div>
+        <div id="alert-list" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+  <div class="panels" style="padding-top:0">
+    <div class="panel">
+      <h3>Active Rules</h3>
+      <div class="panel-body med" id="rules-list"></div>
+    </div>
+    <div class="panel">
+      <h3>Alerts by Category</h3>
+      <div class="panel-body med" id="category-breakdown"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: ANALYTICS -->
+<div class="tab-content" id="tab-analytics">
+  <div class="stat-cards" id="analytics-stats"></div>
+  <div class="panels" style="padding-top:8px">
+    <div class="panel">
+      <h3>Alerts by Rule</h3>
+      <div class="panel-body med" id="by-rule-chart"></div>
+    </div>
+    <div class="panel">
+      <h3>Alerts by Category</h3>
+      <div class="panel-body med" id="by-cat-chart"></div>
+    </div>
+  </div>
+  <div class="panels" style="padding-top:0">
+    <div class="panel full-width">
+      <h3>Connection Health</h3>
+      <div class="panel-body short" id="health-detail"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: TRACK TX -->
+<div class="tab-content" id="tab-track">
+  <div class="track-box">
+    <h3 style="color:var(--fg2);font-size:11px;text-transform:uppercase;margin-bottom:12px">Transaction Tracker</h3>
+    <div class="track-input">
+      <input type="text" id="track-hash" placeholder="0x... paste transaction hash">
+      <button onclick="trackTx()">Track</button>
+    </div>
+    <div id="track-result"></div>
   </div>
 </div>
 
 <script>
-const MAX_POINTS=80, MAX_EVENTS=60, MAX_BLOCKS=20;
-const PROTO_COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',nft:'#f472b6',system:'#4b5563',unknown:'#6b7280'};
+// ===== GLOBALS =====
+const MAX_POINTS=80,MAX_EVENTS=50,MAX_BLOCKS=15;
+const COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',nft:'#f472b6',system:'#4b5563',unknown:'#6b7280'};
 const EMOJI={dex:'🔄',bridge:'🌉',token:'💰',lending:'🏦',nft:'🖼️',system:'⚙️',unknown:'📦'};
+let S={currentPayload:null,blockNumber:null,fbCount:0,txsInBlock:0,gasInBlock:0,baseFee:null,
+  blocksTotal:0,totalFb:0,startTime:Date.now(),txsHistory:[],gasHistory:[],
+  protoActivity:{},protoWindow:[],currentBlockTxs:0,currentBlockGas:0,currentBlockProtos:{},currentBlockStart:null};
 
-let S={currentPayload:null,blockNumber:null,fbCount:0,txsInBlock:0,gasInBlock:0,
-  baseFee:null,blocksTotal:0,totalFb:0,startTime:Date.now(),
-  txsHistory:[],gasHistory:[],
-  protoActivity:{},protoWindow:[],
-  currentBlockTxs:0,currentBlockGas:0,currentBlockProtos:{},currentBlockStart:null,
-};
+// ===== TABS =====
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+    if(t.dataset.tab==='alerts'){fetchAlertStats();fetchAlerts();fetchRules();}
+    if(t.dataset.tab==='analytics'){fetchAnalytics();}
+  });
+});
 
+// ===== CHARTS =====
 function drawChart(id,data,color){
-  const c=document.getElementById(id),ctx=c.getContext('2d');
+  const c=document.getElementById(id);if(!c)return;const ctx=c.getContext('2d');
   const dpr=devicePixelRatio||1,r=c.getBoundingClientRect();
   c.width=r.width*dpr;c.height=r.height*dpr;ctx.scale(dpr,dpr);
   const w=r.width,h=r.height;ctx.clearRect(0,0,w,h);
   if(data.length<2)return;
   const max=Math.max(...data,1),step=w/(MAX_POINTS-1);
   const si=Math.max(0,data.length-MAX_POINTS);
-  ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;
-  for(let i=si;i<data.length;i++){
-    const x=(i-si)*step,y=h-(data[i]/max)*(h-10)-5;
-    i===si?ctx.moveTo(x,y):ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-  ctx.lineTo((data.length-1-si)*step,h);ctx.lineTo(0,h);ctx.closePath();
-  ctx.fillStyle=color.replace('1)','0.08)');ctx.fill();
-  ctx.fillStyle='#4b5563';ctx.font='10px monospace';ctx.fillText(fmtN(max),4,12);
+  ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=1.5;
+  for(let i=si;i<data.length;i++){const x=(i-si)*step,y=h-(data[i]/max)*(h-8)-4;i===si?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();ctx.lineTo((data.length-1-si)*step,h);ctx.lineTo(0,h);ctx.closePath();
+  ctx.fillStyle=color.replace('1)','0.06)');ctx.fill();
+  ctx.fillStyle='#4b5563';ctx.font='9px monospace';ctx.fillText(fmtN(max),3,10);
 }
+
+function drawBar(el,items,colorFn){
+  el.innerHTML='';if(!items.length){el.innerHTML='<div class="empty-msg">No data yet</div>';return;}
+  const max=Math.max(...items.map(i=>i.count),1);
+  for(const item of items){
+    const pct=Math.round(item.count/max*100);
+    const color=colorFn(item);
+    const d=document.createElement('div');d.className='proto-row';
+    d.innerHTML=`<div class="proto-header"><span class="proto-name" style="color:${color}">${item.label}</span><span class="proto-count">${item.count}</span></div><div class="proto-bar"><div class="proto-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+    el.appendChild(d);
+  }
+}
+
+// ===== HELPERS =====
 function fmtN(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n}
 function fmtG(n){return n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n}
-function ts(){const d=new Date();return d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0')}
+function ts(){const d=new Date();return d.toTimeString().slice(0,8)}
+function fmtDur(s){if(s>=86400)return Math.floor(s/86400)+'d '+Math.floor(s%86400/3600)+'h';if(s>=3600)return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m';return Math.floor(s/60)+'m '+s%60+'s';}
 
+// ===== LIVE FEED =====
 function updateUI(){
   document.getElementById('m-block').textContent=S.blockNumber??'—';
   document.getElementById('m-fb-count').textContent=S.fbCount;
   document.getElementById('m-txs').textContent=S.txsInBlock;
   document.getElementById('m-gas').textContent=fmtG(S.gasInBlock);
   document.getElementById('m-basefee').textContent=S.baseFee!=null?S.baseFee.toFixed(4):'—';
-  document.getElementById('m-blocks').textContent=S.blocksTotal;
   const el=Math.floor((Date.now()-S.startTime)/1000);
-  document.getElementById('m-uptime').textContent=Math.floor(el/60)+'m '+el%60+'s';
+  document.getElementById('m-uptime').textContent=fmtDur(el);
   if(S.totalFb>0)document.getElementById('m-fb-rate').textContent=(S.totalFb/(el||1)).toFixed(1)+'/s';
   drawChart('chart-txs',S.txsHistory,'rgba(74,222,128,1)');
   drawChart('chart-gas',S.gasHistory,'rgba(96,165,250,1)');
@@ -171,20 +327,14 @@ function updateUI(){
 }
 
 function renderLeaderboard(){
-  // Expire old entries (>30s)
-  const now=Date.now();
-  S.protoWindow=S.protoWindow.filter(e=>now-e.t<30000);
-  // Aggregate
-  const counts={};
-  for(const e of S.protoWindow){counts[e.n]=(counts[e.n]||0)+1;}
+  const now=Date.now();S.protoWindow=S.protoWindow.filter(e=>now-e.t<30000);
+  const counts={};for(const e of S.protoWindow)counts[e.n]=(counts[e.n]||0)+1;
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const maxC=sorted.length?sorted[0][1]:1;
-  const lb=document.getElementById('leaderboard');
-  lb.innerHTML='';
-  if(!sorted.length){lb.innerHTML='<div style="padding:14px;color:#4b5563">Waiting for protocol activity...</div>';return;}
+  const lb=document.getElementById('leaderboard');lb.innerHTML='';
+  if(!sorted.length){lb.innerHTML='<div class="empty-msg">Waiting for activity...</div>';return;}
   for(const [name,count] of sorted){
-    const cat=S.protoActivity[name]||'unknown';
-    const color=PROTO_COLORS[cat]||'#6b7280';
+    const cat=S.protoActivity[name]||'unknown';const color=COLORS[cat]||'#6b7280';
     const pct=Math.round(count/maxC*100);
     const d=document.createElement('div');d.className='proto-row';
     d.innerHTML=`<div class="proto-header"><span class="proto-name" style="color:${color}">${EMOJI[cat]||'📦'} ${name}</span><span class="proto-count">${count} txs</span></div><div class="proto-bar"><div class="proto-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
@@ -197,26 +347,21 @@ function sealBlock(){
   const bs=document.getElementById('block-summary');
   const d=document.createElement('div');d.className='block-card';
   const protos=Object.entries(S.currentBlockProtos).sort((a,b)=>b[1]-a[1]);
-  const protoTags=protos.slice(0,5).map(([n,c])=>{
-    const cat=S.protoActivity[n]||'unknown';
-    return `<span class="proto-tag ${cat}">${n} ×${c}</span>`;
-  }).join('');
-  d.innerHTML=`<div class="block-head"><span class="block-num">Block ${S.blockNumber}</span><span class="block-time">${ts()}</span></div><div class="block-stats"><span>📦 ${S.currentBlockTxs} txs</span><span>⛽ ${fmtG(S.currentBlockGas)}</span><span>⚡ ${S.fbCount} fb</span></div>${protoTags?`<div class="block-protos">${protoTags}</div>`:''}`;
+  const tags=protos.slice(0,5).map(([n,c])=>`<span class="proto-tag ${S.protoActivity[n]||'unknown'}">${n} ×${c}</span>`).join('');
+  d.innerHTML=`<div class="block-head"><span class="block-num">Block ${S.blockNumber}</span><span class="block-time">${ts()}</span></div><div class="block-stats"><span>📦 ${S.currentBlockTxs} txs</span><span>⛽ ${fmtG(S.currentBlockGas)}</span><span>⚡ ${S.fbCount} fb</span></div>${tags?`<div class="block-protos">${tags}</div>`:''}`;
   bs.insertBefore(d,bs.firstChild);
   while(bs.children.length>MAX_BLOCKS)bs.removeChild(bs.lastChild);
 }
 
 function addEvent(emoji,desc,value,cat){
   const el=document.getElementById('events');
-  const d=document.createElement('div');
-  d.className='event-row '+(cat||'');
+  const d=document.createElement('div');d.className='event-row '+(cat||'');
   d.innerHTML=`<span class="emoji">${emoji}</span><span class="desc">${desc}</span>${value?`<span class="val">${value}</span>`:''}<span class="ts">${ts()}</span>`;
   el.insertBefore(d,el.firstChild);
   while(el.children.length>MAX_EVENTS)el.removeChild(el.lastChild);
 }
 
 function handleMessage(fb){
-  // New block
   if(fb.payload_id!==S.currentPayload){
     if(S.currentPayload)sealBlock();
     S.blocksTotal++;S.currentPayload=fb.payload_id;
@@ -233,97 +378,180 @@ function handleMessage(fb){
   if(fb.base?.block_number)S.blockNumber=parseInt(fb.base.block_number,16);
   if(fb.base?.base_fee_per_gas)S.baseFee=parseInt(fb.base.base_fee_per_gas,16)/1e9;
 
-  // Process decoded txs
   const now=Date.now();
   for(const tx of (fb._decoded_txs||[])){
     if(tx.raw)continue;
     const label=tx.to_label;
-    if(label){
-      const name=label.name;
-      const cat=tx.category||'unknown';
-      S.protoWindow.push({t:now,n:name});
-      S.protoActivity[name]=cat;
-      S.currentBlockProtos[name]=(S.currentBlockProtos[name]||0)+1;
-    }
-    // Notable event thresholds
-    const action=tx.action||'';
-    const target=label?label.name:(tx.to?tx.to.slice(0,10)+'…':'???');
-    const cat=tx.category||'unknown';
-
-    // Big ETH transfers (>0.5 ETH)
-    if(tx.value_eth>0.5){
-      addEvent('💸',`${action||'Transfer'} → ${target}`,tx.value_eth.toFixed(4)+' ETH',cat);
-    }
-    // DEX swaps (always notable if labeled)
-    else if(cat==='dex'&&action){
-      addEvent('🔄',`${action} → ${target}`,'',cat);
-    }
-    // Bridge activity
-    else if(cat==='bridge'){
-      addEvent('🌉',`${action||'Bridge'} → ${target}`,tx.value_eth>0.001?tx.value_eth.toFixed(4)+' ETH':'',cat);
-    }
-    // Lending
-    else if(cat==='lending'&&action){
-      addEvent('🏦',`${action} → ${target}`,'',cat);
-    }
-    // NFT
-    else if(cat==='nft'&&action){
-      addEvent('🖼️',`${action} → ${target}`,'',cat);
-    }
+    if(label){S.protoWindow.push({t:now,n:label.name});S.protoActivity[label.name]=tx.category||'unknown';S.currentBlockProtos[label.name]=(S.currentBlockProtos[label.name]||0)+1;}
+    const action=tx.action||'',target=label?label.name:(tx.to?tx.to.slice(0,10)+'…':'???'),cat=tx.category||'unknown';
+    if(tx.value_eth>0.5)addEvent('💸',`${action||'Transfer'} → ${target}`,tx.value_eth.toFixed(4)+' ETH',cat);
+    else if(cat==='dex'&&action)addEvent('🔄',`${action} → ${target}`,'',cat);
+    else if(cat==='bridge')addEvent('🌉',`${action||'Bridge'} → ${target}`,tx.value_eth>0.001?tx.value_eth.toFixed(4)+' ETH':'',cat);
+    else if(cat==='lending'&&action)addEvent('🏦',`${action} → ${target}`,'',cat);
+    else if(cat==='nft'&&action)addEvent('🖼️',`${action} → ${target}`,'',cat);
   }
-
-  // Whale alerts
-  for(const w of (fb._whale_alerts||[])){
-    if(parseFloat(w.balance_eth)>5){
-      addEvent('🐋',`Whale balance: ${w.address.slice(0,10)}…`,w.balance_eth+' ETH','whale');
-    }
-  }
-
+  for(const w of (fb._whale_alerts||[]))if(parseFloat(w.balance_eth)>5)addEvent('🐋',`Whale: ${w.address.slice(0,10)}…`,w.balance_eth+' ETH','whale');
   updateUI();
 }
 
-function connect(){
-  const ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`);
-  const st=document.getElementById('status');
-  ws.onopen=()=>{st.textContent='Connected';st.className='status connected';};
-  ws.onclose=()=>{st.textContent='Reconnecting...';st.className='status disconnected';setTimeout(connect,2000);};
-  ws.onerror=()=>ws.close();
-  ws.onmessage=e=>{try{handleMessage(JSON.parse(e.data))}catch(err){console.error(err)}};
-}
-connect();
-setInterval(updateUI,1000);
-
-// Alert history polling
-const ALERT_COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',unknown:'#6b7280'};
-const ALERT_EMOJI={dex:'🔄',bridge:'🌉',lending:'🏦',token:'💰',unknown:'🚨'};
-
-async function pollAlerts(){
+// ===== ALERTS TAB =====
+async function fetchAlertStats(){
   try{
-    const r=await fetch('/alerts/recent');
-    const alerts=await r.json();
-    const el=document.getElementById('alert-history');
-    const countEl=document.getElementById('alert-count');
-    if(!alerts.length){el.innerHTML='<div style="padding:14px;color:#4b5563">No alerts yet — waiting for rule matches...</div>';countEl.textContent='';return;}
-    countEl.textContent=`(${alerts.length} recent)`;
-    el.innerHTML='';
-    for(const a of alerts){
-      const cat=a.tx?.category||'unknown';
-      const color=ALERT_COLORS[cat]||'#6b7280';
-      const emoji=ALERT_EMOJI[cat]||'🚨';
+    const r=await fetch('/alerts/stats');const d=await r.json();
+    const el=document.getElementById('alert-stats');
+    el.innerHTML=`
+      <div class="sc"><div class="sv">${fmtN(d.total_alerts||0)}</div><div class="sl">Total Alerts</div></div>
+      <div class="sc"><div class="sv">${d.last_hour||0}</div><div class="sl">Last Hour</div></div>
+      <div class="sc"><div class="sv">${(d.by_rule||[]).length}</div><div class="sl">Active Rules</div></div>
+      <div class="sc"><div class="sv">${(d.by_category||[]).length}</div><div class="sl">Categories</div></div>
+    `;
+    // Populate rule filter dropdown
+    const sel=document.getElementById('f-rule');
+    const existing=new Set([...sel.options].map(o=>o.value));
+    for(const r of (d.by_rule||[])){if(!existing.has(r.rule)){const o=document.createElement('option');o.value=r.rule;o.textContent=r.rule+' ('+r.count+')';sel.appendChild(o);existing.add(r.rule);}}
+    // Category breakdown
+    const catEl=document.getElementById('category-breakdown');
+    drawBar(catEl,(d.by_category||[]).map(c=>({label:(EMOJI[c.category]||'📦')+' '+c.category,count:c.count})),()=>'var(--blue)');
+  }catch(e){console.error(e)}
+}
+
+async function fetchAlerts(){
+  const rule=document.getElementById('f-rule').value;
+  const cat=document.getElementById('f-category').value;
+  const minEth=document.getElementById('f-min-eth').value;
+  const last=document.getElementById('f-last').value;
+  const params=new URLSearchParams();
+  if(rule)params.set('rule',rule);if(cat)params.set('category',cat);
+  if(minEth)params.set('min_eth',minEth);if(last)params.set('last',last);
+  params.set('limit','100');
+  try{
+    const r=await fetch('/alerts?'+params);const d=await r.json();
+    const el=document.getElementById('alert-list');el.innerHTML='';
+    if(!d.alerts?.length){el.innerHTML='<div class="empty-msg">No alerts match filters</div>';return;}
+    for(const a of d.alerts){
+      const cat=a.tx?.category||'unknown';const color=COLORS[cat]||'#6b7280';
+      const emoji=EMOJI[cat]||'🚨';
       const label=a.tx?.to_label||((a.tx?.to||'?').slice(0,12)+'…');
       const action=a.tx?.action||'';
       const value=a.tx?.value_eth>0.001?a.tx.value_eth.toFixed(4)+' ETH':'';
       const time=new Date(a.timestamp*1000).toLocaleTimeString();
       const block=a.block_number||'?';
-      const d=document.createElement('div');
-      d.className='event-row '+cat;
-      d.innerHTML=`<span class="emoji">${emoji}</span><span style="color:${color};font-weight:600;min-width:100px">${a.rule_name}</span><span class="desc">${action?action+' → ':''}${label}</span>${value?`<span class="val">${value}</span>`:''}<span class="ts">blk ${block}<br>${time}</span>`;
-      el.appendChild(d);
+      const row=document.createElement('div');row.className='event-row '+cat;
+      row.innerHTML=`<span class="emoji">${emoji}</span><span style="color:${color};font-weight:600;min-width:90px;font-size:11px">${a.rule_name}</span><span class="desc">${action?action+' → ':''}${label}</span>${value?`<span class="val">${value}</span>`:''}<span class="ts">blk ${block}<br>${time}</span>`;
+      el.appendChild(row);
     }
-  }catch(e){console.error('Alert poll failed:',e)}
+  }catch(e){console.error(e)}
 }
-pollAlerts();
-setInterval(pollAlerts,5000);
+
+async function fetchRules(){
+  try{
+    const r=await fetch('/api/rules');const d=await r.json();
+    const el=document.getElementById('rules-list');el.innerHTML='';
+    if(!d.rules?.length){el.innerHTML='<div class="empty-msg">No rules configured</div>';return;}
+    for(const rule of d.rules){
+      const row=document.createElement('div');row.className='rule-row';
+      row.innerHTML=`<span class="rule-name">${rule.name}</span><span class="rule-trigger">${rule.trigger}</span><span class="rule-status ${rule.enabled?'on':'off'}">${rule.enabled?'● ON':'○ OFF'}</span>`;
+      el.appendChild(row);
+    }
+    if(d.global){
+      const row=document.createElement('div');row.className='rule-row';row.style.borderTop='1px solid var(--bg2)';
+      row.innerHTML=`<span style="color:var(--fg3);font-size:11px">Global: cooldown ${d.global.cooldown_secs}s · max ${d.global.max_per_minute}/min · retain ${d.global.retention_days}d</span>`;
+      el.appendChild(row);
+    }
+  }catch(e){console.error(e)}
+}
+
+// ===== ANALYTICS TAB =====
+async function fetchAnalytics(){
+  try{
+    const [statsR,healthR]=await Promise.all([fetch('/alerts/stats'),fetch('/api/health')]);
+    const stats=await statsR.json();const health=await healthR.json();
+
+    const el=document.getElementById('analytics-stats');
+    el.innerHTML=`
+      <div class="sc"><div class="sv">${fmtN(stats.total_alerts||0)}</div><div class="sl">Total Alerts</div></div>
+      <div class="sc"><div class="sv">${stats.last_hour||0}</div><div class="sl">Alerts/Hour</div></div>
+      <div class="sc"><div class="sv">${fmtN(health.total_flashblocks||0)}</div><div class="sl">Flashblocks</div></div>
+      <div class="sc"><div class="sv">${fmtN(health.total_transactions||0)}</div><div class="sl">Transactions</div></div>
+      <div class="sc"><div class="sv">${fmtN(health.blocks_seen||0)}</div><div class="sl">Blocks Seen</div></div>
+      <div class="sc"><div class="sv">${fmtDur(health.uptime_secs||0)}</div><div class="sl">Uptime</div></div>
+    `;
+
+    // By rule
+    drawBar(document.getElementById('by-rule-chart'),(stats.by_rule||[]).map(r=>({label:'🚨 '+r.rule,count:r.count})),()=>'var(--yellow)');
+    // By category
+    drawBar(document.getElementById('by-cat-chart'),(stats.by_category||[]).map(c=>({label:(EMOJI[c.category]||'📦')+' '+c.category,count:c.count})),i=>COLORS[i.label?.split(' ')[1]]||'var(--fg3)');
+
+    // Health detail
+    const hd=document.getElementById('health-detail');
+    hd.innerHTML=`
+      <div class="event-row"><span class="emoji">${health.connected?'🟢':'🔴'}</span><span class="desc">Connection</span><span class="val">${health.connected?'Connected':'Disconnected'}</span></div>
+      <div class="event-row"><span class="emoji">⏱️</span><span class="desc">Uptime</span><span class="val">${fmtDur(health.uptime_secs||0)}</span></div>
+      <div class="event-row"><span class="emoji">🔄</span><span class="desc">Reconnects</span><span class="val">${health.reconnect_count||0}</span></div>
+      <div class="event-row"><span class="emoji">⚡</span><span class="desc">Total Flashblocks</span><span class="val">${fmtN(health.total_flashblocks||0)}</span></div>
+      <div class="event-row"><span class="emoji">📦</span><span class="desc">Total Transactions</span><span class="val">${fmtN(health.total_transactions||0)}</span></div>
+      <div class="event-row"><span class="emoji">🧱</span><span class="desc">Blocks Seen</span><span class="val">${health.blocks_seen||0}</span></div>
+      <div class="event-row"><span class="emoji">🕐</span><span class="desc">Last Message</span><span class="val">${health.last_message_ago_secs||0}s ago</span></div>
+      <div class="event-row"><span class="emoji">🔗</span><span class="desc">Last Block</span><span class="val">${health.last_block||'—'}</span></div>
+    `;
+  }catch(e){console.error(e)}
+}
+
+// ===== TRACK TX =====
+async function trackTx(){
+  const hash=document.getElementById('track-hash').value.trim();
+  if(!hash){return;}
+  const el=document.getElementById('track-result');
+  el.innerHTML='<div class="empty-msg">Tracking...</div>';
+  try{
+    const r=await fetch('/api/track/'+encodeURIComponent(hash));const d=await r.json();
+    if(d.status==='confirmed'){
+      const statusColor=d.tx_status==='success'?'var(--green)':'var(--red)';
+      const statusIcon=d.tx_status==='success'?'✅':'❌';
+      el.innerHTML=`<div class="track-result">
+        <div class="tr-row"><span class="tr-label">Status</span><span class="tr-value" style="color:${statusColor}">${statusIcon} ${d.tx_status}</span></div>
+        <div class="tr-row"><span class="tr-label">Block</span><span class="tr-value" style="color:var(--blue)">${d.block_number}</span></div>
+        <div class="tr-row"><span class="tr-label">Gas Used</span><span class="tr-value">${d.gas_used?fmtN(d.gas_used):'—'}</span></div>
+        <div class="tr-row"><span class="tr-label">TX Hash</span><span class="tr-value" style="font-size:10px;word-break:break-all">${hash}</span></div>
+        <div class="tr-row"><span class="tr-label">Basescan</span><span class="tr-value"><a href="https://basescan.org/tx/${hash}" target="_blank">View ↗</a></span></div>
+      </div>`;
+    } else if(d.status==='pending'){
+      el.innerHTML=`<div class="track-result"><div class="tr-row"><span class="tr-label">Status</span><span class="tr-value" style="color:var(--yellow)">⏳ Pending</span></div><div class="tr-row"><span class="tr-label">TX Hash</span><span class="tr-value" style="font-size:10px;word-break:break-all">${hash}</span></div></div>`;
+    } else {
+      el.innerHTML=`<div class="track-result"><div class="tr-row"><span class="tr-label">Error</span><span class="tr-value" style="color:var(--red)">${d.message||'Unknown error'}</span></div></div>`;
+    }
+  }catch(e){el.innerHTML=`<div class="empty-msg" style="color:var(--red)">Failed to track: ${e.message}</div>`;}
+}
+document.getElementById('track-hash').addEventListener('keydown',e=>{if(e.key==='Enter')trackTx();});
+
+// ===== HEALTH POLLING =====
+async function pollHealth(){
+  try{
+    const r=await fetch('/api/health');const h=await r.json();
+    const st=document.getElementById('status');
+    st.textContent=h.connected?'Connected':'Disconnected';
+    st.className='status '+(h.connected?'ok':'err');
+    document.getElementById('hp-fb').textContent=fmtN(h.total_flashblocks||0)+' fb';
+    document.getElementById('hp-blocks').textContent=(h.blocks_seen||0)+' blocks';
+    document.getElementById('hp-reconnects').textContent=(h.reconnect_count||0)+' reconn';
+    if(h.last_block)document.getElementById('ci-block').textContent='Block '+h.last_block;
+  }catch(e){}
+}
+
+// ===== WEBSOCKET =====
+function connect(){
+  const ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`);
+  ws.onopen=()=>{const st=document.getElementById('status');st.textContent='Connected';st.className='status ok';};
+  ws.onclose=()=>{const st=document.getElementById('status');st.textContent='Reconnecting...';st.className='status err';setTimeout(connect,2000);};
+  ws.onerror=()=>ws.close();
+  ws.onmessage=e=>{try{handleMessage(JSON.parse(e.data))}catch(err){console.error(err)}};
+}
+
+// ===== INIT =====
+connect();
+setInterval(updateUI,1000);
+setInterval(pollHealth,5000);
+pollHealth();
 </script>
 </body>
 </html>
