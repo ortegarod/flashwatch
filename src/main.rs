@@ -9,6 +9,8 @@ pub mod analyze;
 pub mod format;
 pub mod decode;
 pub mod serve;
+pub mod rules;
+pub mod alert;
 
 #[derive(Parser)]
 #[command(
@@ -87,6 +89,17 @@ enum Commands {
     /// Show current Base chain info and flashblock status
     Info,
 
+    /// Watch for transactions matching rules and alert via log/webhook
+    Alert {
+        /// Path to rules TOML config file
+        #[arg(short = 'R', long)]
+        rules: String,
+
+        /// Output alerts as JSON lines (for piping)
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Launch web dashboard with live flashblock visualization
     Serve {
         /// Port for the web server
@@ -128,6 +141,9 @@ async fn main() -> eyre::Result<()> {
         }
         Commands::Info => {
             rpc::info(&cli.rpc_url).await?;
+        }
+        Commands::Alert { rules, json } => {
+            alert::run(&cli.url, &rules, json).await?;
         }
         Commands::Serve { port, bind } => {
             serve::run(&cli.url, &cli.rpc_url, &bind, port).await?;

@@ -1,0 +1,66 @@
+# flashwatch alert rules
+# Copy to rules.toml and customize.
+
+[global]
+cooldown_secs = 10      # Min seconds between fires of same rule
+max_per_minute = 30     # Global rate limit across all rules
+batch_secs = 0          # 0 = fire immediately
+
+# Whale ETH transfers (>5 ETH)
+[[rules]]
+name = "whale-transfer"
+enabled = true
+# webhook = "https://your-bot.com/hook"
+
+[rules.trigger]
+kind = "eth_transfer"
+min_eth = 5.0
+
+# Large value transactions (any type, >10 ETH)
+[[rules]]
+name = "large-value"
+enabled = true
+
+[rules.trigger]
+kind = "large_value"
+min_eth = 10.0
+
+# DEX activity on major routers
+[[rules]]
+name = "dex-swap"
+enabled = true
+cooldown_secs = 5
+
+[rules.trigger]
+kind = "protocol"
+categories = ["dex"]
+min_eth = 1.0
+
+# Uniswap specifically
+[[rules]]
+name = "uniswap-activity"
+enabled = false
+
+[rules.trigger]
+kind = "protocol"
+names = ["Uniswap V3 Router", "Uniswap Universal Router"]
+
+# Bridge movements
+[[rules]]
+name = "bridge-activity"
+enabled = true
+
+[rules.trigger]
+kind = "protocol"
+categories = ["bridge"]
+min_eth = 0.5
+
+# Specific address watch
+[[rules]]
+name = "watch-address"
+enabled = false
+
+[rules.trigger]
+kind = "address"
+address = "0x1234567890abcdef1234567890abcdef12345678"
+min_eth = 0.0
