@@ -7,6 +7,7 @@ pub mod types;
 pub mod monitor;
 pub mod analyze;
 pub mod format;
+pub mod serve;
 
 #[derive(Parser)]
 #[command(
@@ -84,6 +85,17 @@ enum Commands {
 
     /// Show current Base chain info and flashblock status
     Info,
+
+    /// Launch web dashboard with live flashblock visualization
+    Serve {
+        /// Port for the web server
+        #[arg(short, long, default_value_t = 3000)]
+        port: u16,
+
+        /// Bind address
+        #[arg(long, default_value = "0.0.0.0")]
+        bind: String,
+    },
 }
 
 #[tokio::main]
@@ -115,6 +127,9 @@ async fn main() -> eyre::Result<()> {
         }
         Commands::Info => {
             rpc::info(&cli.rpc_url).await?;
+        }
+        Commands::Serve { port, bind } => {
+            serve::run(&cli.url, &cli.rpc_url, &bind, port).await?;
         }
     }
 
