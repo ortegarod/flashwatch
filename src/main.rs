@@ -118,6 +118,10 @@ enum Commands {
         /// Path to SQLite database for alert storage
         #[arg(long, default_value = "flashwatch.db")]
         db: String,
+
+        /// Path to static files directory (default: ./static/)
+        #[arg(long)]
+        static_dir: Option<String>,
     },
 }
 
@@ -154,8 +158,8 @@ async fn main() -> eyre::Result<()> {
         Commands::Alert { rules, json } => {
             alert::run(&cli.url, &rules, json).await?;
         }
-        Commands::Serve { port, bind, rules, db } => {
-            serve::run(&cli.url, &cli.rpc_url, &bind, port, rules.as_deref(), Some(&db)).await?;
+        Commands::Serve { port, bind, rules, db, static_dir } => {
+            serve::run(&cli.url, &cli.rpc_url, &bind, port, rules.as_deref(), Some(&db), static_dir.as_deref()).await?;
         }
     }
 

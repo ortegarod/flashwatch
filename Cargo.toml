@@ -43,6 +43,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 
 # Web server (for the dashboard)
 axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["fs"] }
 
 # Color output
 colored = "3"
