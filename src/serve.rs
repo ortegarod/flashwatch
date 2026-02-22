@@ -1,13 +1,16 @@
 //! Web dashboard server — serves HTML + proxies flashblocks over WebSocket.
+//! Also runs the rule engine and stores alerts in SQLite.
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::{
-    Router,
+    Json, Router,
     extract::{
-        State, WebSocketUpgrade,
+        Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
     response::Html,
@@ -18,21 +21,63 @@ use tokio::sync::broadcast;
 use tokio_tungstenite::tungstenite::Message as TungMessage;
 use tracing::info;
 
+use crate::rules::RuleEngine;
+use crate::store::{AlertQuery, AlertStore};
+
 struct AppState {
     tx: broadcast::Sender<String>,
+    store: Option<AlertStore>,
 }
 
-pub async fn run(ws_url: &str, _rpc_url: &str, bind: &str, port: u16) -> eyre::Result<()> {
+pub async fn run(
+    ws_url: &str,
+    _rpc_url: &str,
+    bind: &str,
+    port: u16,
+    rules_path: Option<&str>,
+    db_path: Option<&str>,
+) -> eyre::Result<()> {
     let (tx, _) = broadcast::channel::<String>(256);
-    let state = Arc::new(AppState { tx: tx.clone() });
 
-    // Spawn the upstream flashblocks reader
+    // Load rules engine if config provided
+    let rules_engine = if let Some(rp) = rules_path {
+        let rules_str = std::fs::read_to_string(rp)?;
+        let engine = RuleEngine::from_toml(&rules_str)?;
+        let rule_count = engine.config.rules.iter().filter(|r| r.enabled).count();
+        info!("Loaded {} active alert rules from {}", rule_count, rp);
+        Some(tokio::sync::Mutex::new(engine))
+    } else {
+        None
+    };
+
+    // Open SQLite store
+    let store = {
+        let path = db_path.unwrap_or("flashwatch.db");
+        let store = AlertStore::open(&PathBuf::from(path))?;
+        info!("Alert store at {}", path);
+        Some(store)
+    };
+
+    let state = Arc::new(AppState {
+        tx: tx.clone(),
+        store,
+    });
+
+    // Spawn the upstream flashblocks reader (with optional rule engine)
     let ws_url = ws_url.to_string();
+    let reader_state = state.clone();
+    let rules_engine = rules_engine.map(|e| Arc::new(e));
+    let rules_ref = rules_engine.clone();
     tokio::spawn(async move {
+        let mut retry_delay = 2u64;
         loop {
-            if let Err(e) = upstream_reader(&ws_url, &tx).await {
-                tracing::error!("Upstream disconnected: {}. Reconnecting in 2s...", e);
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            match upstream_reader(&ws_url, &reader_state.tx, rules_ref.as_ref(), &reader_state.store).await {
+                Ok(()) => break,
+                Err(e) => {
+                    tracing::error!("Upstream disconnected: {}. Reconnecting in {}s...", e, retry_delay);
+                    tokio::time::sleep(std::time::Duration::from_secs(retry_delay)).await;
+                    retry_delay = (retry_delay * 2).min(30);
+                }
             }
         }
     });
@@ -40,6 +85,8 @@ pub async fn run(ws_url: &str, _rpc_url: &str, bind: &str, port: u16) -> eyre::R
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/ws", get(ws_handler))
+        .route("/alerts", get(alerts_handler))
+        .route("/alerts/stats", get(stats_handler))
         .with_state(state);
 
     let addr: SocketAddr = format!("{}:{}", bind, port).parse()?;
@@ -47,6 +94,32 @@ pub async fn run(ws_url: &str, _rpc_url: &str, bind: &str, port: u16) -> eyre::R
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+async fn alerts_handler(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Json<serde_json::Value> {
+    let Some(ref store) = state.store else {
+        return Json(serde_json::json!({"error": "no store configured"}));
+    };
+    let query = AlertQuery::from_params(&params);
+    match store.query(&query) {
+        Ok(alerts) => Json(serde_json::json!({"alerts": alerts, "count": alerts.len()})),
+        Err(e) => Json(serde_json::json!({"error": e.to_string()})),
+    }
+}
+
+async fn stats_handler(
+    State(state): State<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    let Some(ref store) = state.store else {
+        return Json(serde_json::json!({"error": "no store configured"}));
+    };
+    match store.stats() {
+        Ok(stats) => Json(stats),
+        Err(e) => Json(serde_json::json!({"error": e.to_string()})),
+    }
 }
 
 async fn index_handler() -> Html<&'static str> {
@@ -72,9 +145,13 @@ async fn handle_ws(mut socket: WebSocket, state: Arc<AppState>) {
 async fn upstream_reader(
     ws_url: &str,
     tx: &broadcast::Sender<String>,
+    rules: Option<&Arc<tokio::sync::Mutex<RuleEngine>>>,
+    store: &Option<AlertStore>,
 ) -> eyre::Result<()> {
     let (mut ws, _) = tokio_tungstenite::connect_async(ws_url).await?;
     info!("Connected to upstream flashblocks feed");
+
+    let mut current_block: Option<u64> = None;
 
     while let Some(Ok(msg)) = ws.next().await {
         let data = match msg {
@@ -93,6 +170,32 @@ async fn upstream_reader(
         // Decode transactions and enrich the message
         let enriched = enrich_flashblock(&text);
         let _ = tx.send(enriched);
+
+        // Run rule engine if configured
+        if let Some(rules_arc) = rules {
+            if let Ok(fb) = serde_json::from_str::<crate::types::FlashblockMessage>(&text) {
+                let block_number = fb.block_number().or(current_block);
+                if fb.block_number().is_some() {
+                    current_block = fb.block_number();
+                }
+
+                let mut engine = rules_arc.lock().await;
+                for tx_val in &fb.diff.transactions {
+                    if let Some(tx_hex) = tx_val.as_str() {
+                        if let Some(decoded) = crate::decode::decode_raw_tx(tx_hex) {
+                            let alerts = engine.check(&decoded, block_number, fb.index);
+                            if let Some(store) = store {
+                                for alert in &alerts {
+                                    if let Err(e) = store.insert(alert) {
+                                        tracing::debug!("Failed to store alert: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(())

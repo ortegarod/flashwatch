@@ -11,6 +11,7 @@ pub mod decode;
 pub mod serve;
 pub mod rules;
 pub mod alert;
+pub mod store;
 
 #[derive(Parser)]
 #[command(
@@ -109,6 +110,14 @@ enum Commands {
         /// Bind address
         #[arg(long, default_value = "0.0.0.0")]
         bind: String,
+
+        /// Path to alert rules TOML config (enables alerting)
+        #[arg(short = 'R', long)]
+        rules: Option<String>,
+
+        /// Path to SQLite database for alert storage
+        #[arg(long, default_value = "flashwatch.db")]
+        db: String,
     },
 }
 
@@ -145,8 +154,8 @@ async fn main() -> eyre::Result<()> {
         Commands::Alert { rules, json } => {
             alert::run(&cli.url, &rules, json).await?;
         }
-        Commands::Serve { port, bind } => {
-            serve::run(&cli.url, &cli.rpc_url, &bind, port).await?;
+        Commands::Serve { port, bind, rules, db } => {
+            serve::run(&cli.url, &cli.rpc_url, &bind, port, rules.as_deref(), Some(&db)).await?;
         }
     }
 
