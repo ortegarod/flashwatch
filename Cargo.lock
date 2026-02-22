@@ -1394,6 +1394,7 @@ dependencies = [
  "crossterm",
  "eyre",
  "futures-util",
+ "hex",
  "reqwest",
  "serde",
  "serde_json",

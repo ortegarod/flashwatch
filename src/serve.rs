@@ -90,11 +90,70 @@ async fn upstream_reader(
             None => continue,
         };
 
-        // Broadcast to all connected browser clients
-        let _ = tx.send(text);
+        // Decode transactions and enrich the message
+        let enriched = enrich_flashblock(&text);
+        let _ = tx.send(enriched);
     }
 
     Ok(())
+}
+
+/// Enrich a flashblock JSON with decoded transaction data.
+fn enrich_flashblock(json_str: &str) -> String {
+    let mut fb: serde_json::Value = match serde_json::from_str(json_str) {
+        Ok(v) => v,
+        Err(_) => return json_str.to_string(),
+    };
+
+    let addresses = crate::decode::known_addresses();
+
+    // Decode transactions
+    let mut decoded_txs = Vec::new();
+    if let Some(txs) = fb.pointer("/diff/transactions").and_then(|t| t.as_array()) {
+        for tx_val in txs {
+            if let Some(tx_hex) = tx_val.as_str() {
+                if let Some(mut dtx) = crate::decode::decode_raw_tx(tx_hex) {
+                    // Try to get tx hash from receipts in metadata
+                    decoded_txs.push(serde_json::to_value(&dtx).unwrap_or_default());
+                } else {
+                    decoded_txs.push(serde_json::json!({"raw": &tx_hex[..tx_hex.len().min(40)]}));
+                }
+            }
+        }
+    }
+
+    // Also decode account balance changes
+    let mut whale_alerts = Vec::new();
+    if let Some(balances) = fb.pointer("/metadata/new_account_balances").and_then(|b| b.as_object()) {
+        for (addr, val) in balances {
+            let addr_lower = addr.to_lowercase();
+            if let Some(label) = addresses.get(addr_lower.as_str()) {
+                // Skip system addresses
+                continue;
+            }
+            // Check if balance is significant
+            if let Some(val_str) = val.as_str() {
+                let val_str = val_str.strip_prefix("0x").unwrap_or(val_str);
+                if let Ok(wei) = u128::from_str_radix(val_str, 16) {
+                    let eth = wei as f64 / 1e18;
+                    if eth > 1.0 {
+                        whale_alerts.push(serde_json::json!({
+                            "address": addr,
+                            "balance_eth": format!("{:.4}", eth),
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // Inject decoded data
+    fb["_decoded_txs"] = serde_json::Value::Array(decoded_txs);
+    if !whale_alerts.is_empty() {
+        fb["_whale_alerts"] = serde_json::Value::Array(whale_alerts);
+    }
+
+    serde_json::to_string(&fb).unwrap_or_else(|_| json_str.to_string())
 }
 
 fn decode_message(data: &[u8]) -> Option<String> {
@@ -203,10 +262,15 @@ const DASHBOARD_HTML: &str = r##"<!DOCTYPE html>
     height: 160px !important;
   }
 
-  .feed {
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
     padding: 0 32px 32px;
   }
-  .feed h3 {
+  .feed, .activity {
+  }
+  .feed h3, .activity h3 {
     font-size: 13px;
     color: #9ca3af;
     margin-bottom: 12px;
@@ -237,9 +301,33 @@ const DASHBOARD_HTML: &str = r##"<!DOCTYPE html>
     border-left: 3px solid #6366f1;
   }
 
+  .act-item {
+    padding: 8px 16px;
+    border-bottom: 1px solid #1a1a2e;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+  }
+  .act-item:last-child { border-bottom: none; }
+  .act-item .emoji { font-size: 16px; min-width: 24px; }
+  .act-item .action { color: #e0e0e0; font-weight: 600; }
+  .act-item .target { color: #60a5fa; }
+  .act-item .val { color: #4ade80; }
+  .act-item .addr { color: #6b7280; font-size: 11px; }
+  .act-item.whale {
+    background: rgba(251, 191, 36, 0.08);
+    border-left: 3px solid #fbbf24;
+  }
+  .act-item.dex { border-left: 3px solid #22d3ee; }
+  .act-item.bridge { border-left: 3px solid #a78bfa; }
+  .act-item.lending { border-left: 3px solid #fbbf24; }
+  .act-item.nft { border-left: 3px solid #f472b6; }
+
   @media (max-width: 768px) {
     .charts { grid-template-columns: 1fr; }
     .metrics { grid-template-columns: repeat(2, 1fr); }
+    .panels { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -294,9 +382,15 @@ const DASHBOARD_HTML: &str = r##"<!DOCTYPE html>
   </div>
 </div>
 
-<div class="feed">
-  <h3>Live Feed</h3>
-  <div class="feed-list" id="feed"></div>
+<div class="panels">
+  <div class="feed">
+    <h3>Live Feed</h3>
+    <div class="feed-list" id="feed"></div>
+  </div>
+  <div class="activity">
+    <h3>⚡ Activity — Decoded Transactions</h3>
+    <div class="feed-list" id="activity"></div>
+  </div>
 </div>
 
 <script>
@@ -458,7 +552,53 @@ function handleMessage(fb) {
   }
 
   addFeedItem(fb);
+  addDecodedTxs(fb);
   updateUI();
+}
+
+function addDecodedTxs(fb) {
+  const activity = document.getElementById('activity');
+  const txs = fb._decoded_txs || [];
+
+  for (const tx of txs) {
+    if (tx.raw) continue; // skip unparsed
+    if (!tx.action && tx.value_eth < 0.01) continue; // skip boring txs
+
+    const div = document.createElement('div');
+    const cat = tx.category || 'unknown';
+    div.className = 'act-item ' + cat;
+
+    const emoji = {dex:'🔄', bridge:'🌉', token:'💰', lending:'🏦', nft:'🖼️', system:'⚙️', unknown:'📦'}[cat] || '📦';
+    const target = tx.to_label ? tx.to_label.name : (tx.to ? tx.to.slice(0, 10) + '…' : '???');
+    const action = tx.action || (tx.value_eth > 0 ? 'ETH transfer' : 'call');
+    const value = tx.value_eth > 0.001 ? `${tx.value_eth.toFixed(4)} ETH` : '';
+
+    div.innerHTML = `
+      <span class="emoji">${emoji}</span>
+      <span class="action">${action}</span>
+      <span class="target">→ ${target}</span>
+      ${value ? `<span class="val">${value}</span>` : ''}
+    `;
+
+    activity.insertBefore(div, activity.firstChild);
+    while (activity.children.length > MAX_FEED) {
+      activity.removeChild(activity.lastChild);
+    }
+  }
+
+  // Whale alerts
+  const whales = fb._whale_alerts || [];
+  for (const w of whales) {
+    const div = document.createElement('div');
+    div.className = 'act-item whale';
+    div.innerHTML = `
+      <span class="emoji">🐋</span>
+      <span class="action">Balance change</span>
+      <span class="addr">${w.address.slice(0, 10)}…</span>
+      <span class="val">${w.balance_eth} ETH</span>
+    `;
+    activity.insertBefore(div, activity.firstChild);
+  }
 }
 
 // WebSocket connection

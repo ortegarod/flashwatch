@@ -47,6 +47,9 @@ axum = { version = "0.8", features = ["ws"] }
 # Color output
 colored = "3"
 
+# Hex encoding/decoding
+hex = "0.4"
+
 # Decompression (flashblocks feed is brotli-compressed)
 brotli = "7"
 

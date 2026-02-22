@@ -7,6 +7,7 @@ pub mod types;
 pub mod monitor;
 pub mod analyze;
 pub mod format;
+pub mod decode;
 pub mod serve;
 
 #[derive(Parser)]
