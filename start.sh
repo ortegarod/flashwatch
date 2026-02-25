@@ -17,18 +17,21 @@ if [ "$1" == "--test" ]; then
   echo "⚠️  Using low-threshold TEST rules"
 fi
 
+RELAY_BIND="${RELAY_BIND:-127.0.0.1}"
+RELAY_PORT="${RELAY_PORT:-4747}"
+
 echo "Starting Moltbook relay..."
-node moltbook-relay/index.js &
+RELAY_BIND="$RELAY_BIND" RELAY_PORT="$RELAY_PORT" node moltbook-relay/index.js &
 RELAY_PID=$!
 sleep 1
 
 # Verify relay is up
-if ! curl -sf http://100.71.117.120:4747/health > /dev/null; then
+if ! curl -sf "http://${RELAY_BIND}:${RELAY_PORT}/health" > /dev/null; then
   echo "Relay failed to start"
   kill $RELAY_PID 2>/dev/null
   exit 1
 fi
-echo "✓ Relay up at http://100.71.117.120:4747"
+echo "✓ Relay up at http://${RELAY_BIND}:${RELAY_PORT}"
 
 echo "Starting FlashWatch with rules: $RULES"
 ./target/release/flashwatch alert -R "$RULES"

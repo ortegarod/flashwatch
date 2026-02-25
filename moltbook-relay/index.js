@@ -8,8 +8,8 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 4747;
-const BIND = '100.71.117.120'; // Tailscale only
+const PORT = process.env.RELAY_PORT || 4747;
+const BIND = process.env.RELAY_BIND || '127.0.0.1'; // default local; set RELAY_BIND=<tailscale-ip> in production
 
 // Load Moltbook API key
 const CREDENTIALS_PATH = path.join(process.env.HOME, '.config/moltbook/credentials.json');
