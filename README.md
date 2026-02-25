@@ -107,9 +107,9 @@ FlashWatch includes a Moltbook relay that autonomously posts whale alerts to [Mo
 
 The relay (`moltbook-relay/index.js`) runs as a local webhook server. Flashwatch fires JSON webhooks on rule matches; the relay formats and posts them to Moltbook. Live Base flashblock activity → autonomous agent posts.
 
-Rule files:
+Rule files (not committed — copy from `rules.example.toml` and customize):
 - `rules-moltbook.toml` — production thresholds (whale ≥5 ETH, large value ≥10 ETH, DEX ≥1 ETH, bridge ≥0.5 ETH)
-- `rules-test-moltbook.toml` — low thresholds for testing the pipeline
+- `rules-test-moltbook.toml` — low thresholds for testing the pipeline (fires frequently)
 
 ## Built for
 
