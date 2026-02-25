@@ -45,7 +45,7 @@ impl AlertStore {
 
     pub fn insert(&self, alert: &Alert) -> eyre::Result<()> {
         let payload = serde_json::to_string(alert)?;
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|e| eyre::eyre!("DB lock poisoned: {e}"))?;
         conn.execute(
             "INSERT INTO alerts (rule_name, block_number, fb_index, timestamp, to_addr, to_label, value_eth, action, category, payload)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -67,7 +67,7 @@ impl AlertStore {
 
     /// Query alerts with optional filters.
     pub fn query(&self, params: &AlertQuery) -> eyre::Result<Vec<serde_json::Value>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|e| eyre::eyre!("DB lock poisoned: {e}"))?;
 
         let mut where_clauses = Vec::new();
         let mut bind_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
@@ -127,7 +127,7 @@ impl AlertStore {
 
     /// Get summary stats.
     pub fn stats(&self) -> eyre::Result<serde_json::Value> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|e| eyre::eyre!("DB lock poisoned: {e}"))?;
 
         let total: i64 = conn.query_row("SELECT COUNT(*) FROM alerts", [], |r| r.get(0))?;
 
@@ -164,7 +164,7 @@ impl AlertStore {
 
     /// Prune alerts older than the given number of days. Returns count deleted.
     pub fn prune(&self, retention_days: u64) -> eyre::Result<usize> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|e| eyre::eyre!("DB lock poisoned: {e}"))?;
         let deleted = conn.execute(
             "DELETE FROM alerts WHERE timestamp < unixepoch() - ?1",
             params![retention_days * 86400],

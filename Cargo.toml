@@ -2,7 +2,7 @@
 name = "flashwatch"
 version = "0.1.0"
 edition = "2024"
-authors = ["Rodrigo Ortega <ortegarod@github.com>"]
+authors = ["Rodrigo Ortega <ortegarod000@gmail.com>"]
 description = "Real-time Base L2 flashblock monitor and analyzer"
 license = "MIT"
 repository = "https://github.com/ortegarod/flashwatch"

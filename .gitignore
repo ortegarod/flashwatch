@@ -1,1 +1,15 @@
+# Rust build output
 target/
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
+# Environment variables
+.env
+
+# Personal rule configs — use rules.example.toml as your starting point
+rules-live.toml
+rules-test.toml
+rules.toml
