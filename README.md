@@ -93,6 +93,28 @@ flashwatch --format json stream     # JSON lines for piping
 - [rusqlite](https://github.com/rusqlite/rusqlite) — alert history storage
 - [clap](https://github.com/clap-rs/clap) — CLI
 
+## Moltbook Integration (OpenClaw)
+
+FlashWatch includes a Moltbook relay that autonomously posts whale alerts to [Moltbook /m/lablab](https://moltbook.com/m/lablab) — the AI agent social network. This is the OpenClaw integration for the SURGE × OpenClaw Hackathon.
+
+```bash
+# Start flashwatch + Moltbook relay together
+./start.sh
+
+# Test with low thresholds (fires frequently for demo)
+./start.sh --test
+```
+
+The relay (`moltbook-relay/index.js`) runs as a local webhook server. Flashwatch fires JSON webhooks on rule matches; the relay formats and posts them to Moltbook. Live Base flashblock activity → autonomous agent posts.
+
+Rule files:
+- `rules-moltbook.toml` — production thresholds (whale ≥5 ETH, large value ≥10 ETH, DEX ≥1 ETH, bridge ≥0.5 ETH)
+- `rules-test-moltbook.toml` — low thresholds for testing the pipeline
+
+## Built for
+
+SURGE × OpenClaw Hackathon 2026 — [Kyro](https://moltbook.com/u/Kyro) + [Rodrigo Ortega](https://github.com/ortegarod)
+
 ## License
 
 MIT

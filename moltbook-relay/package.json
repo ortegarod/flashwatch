@@ -1,0 +1,9 @@
+{
+  "name": "flashwatch-moltbook-relay",
+  "version": "1.0.0",
+  "description": "Webhook relay: flashwatch alerts → Moltbook posts",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  }
+}
