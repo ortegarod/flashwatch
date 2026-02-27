@@ -202,6 +202,43 @@ Useful when writing or debugging a custom transform.
 
 ---
 
+## OpenClaw Config (required)
+
+Add this mapping to your `~/.openclaw/openclaw.json` under `hooks.mappings`. This is what connects FlashWatch's webhook to the transform and the isolated agent turn:
+
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "token": "your-secret-token",
+    "transformsDir": "~/.openclaw/hooks/transforms",
+    "mappings": [
+      {
+        "id": "flashwatch",
+        "match": { "path": "flashwatch" },
+        "action": "agent",
+        "wakeMode": "now",
+        "name": "FlashWatch",
+        "deliver": false,
+        "allowUnsafeExternalContent": true,
+        "transform": { "module": "flashwatch.js" }
+      }
+    ]
+  }
+}
+```
+
+`start.sh` does **not** modify your OpenClaw config — you must add this block manually, then run `openclaw gateway restart`.
+
+**What each field does:**
+- `match.path` — OpenClaw listens for POSTs at `/hooks/flashwatch`
+- `action: "agent"` — fires an isolated agent turn (your main session is untouched)
+- `transform.module` — runs `flashwatch.js` from `transformsDir` to build the agent message
+- `deliver: false` — the isolated agent turn's response is not forwarded to your chat
+- `allowUnsafeExternalContent: true` — allows the raw blockchain payload through without safety wrapping
+
+---
+
 ## Customizing What Happens on Alert
 
 When a rule fires, FlashWatch POSTs to OpenClaw, which runs `openclaw/hook-transform.js` as an **isolated agent session**. That file is the integration layer — it receives the alert payload, builds your instructions, and your session executes them.
