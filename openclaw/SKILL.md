@@ -134,30 +134,41 @@ journalctl -u flashwatch -f
 
 ---
 
-## Alert Rules (rules-moltbook.toml)
+## Alert Rules
+
+Rules live in a TOML file (copy `rules.example.toml` to get started). Each rule defines **what to watch for** and **where to send the alert** when it fires.
+
+### Structure
 
 ```toml
 [global]
-cooldown_secs = 120
-max_per_minute = 5
+cooldown_secs = 120   # minimum seconds between any two alerts (prevents floods)
+max_per_minute = 5    # hard cap on alerts per minute across all rules
 
 [[rules]]
-name = "whale-transfer"
-webhook = "http://127.0.0.1:18789/hooks/flashwatch"
-cooldown_secs = 300
+name = "whale-transfer"                          # label shown in logs and alert payload
+webhook = "http://127.0.0.1:18789/hooks/flashwatch"  # where to POST when this rule fires
+cooldown_secs = 300                              # this rule specifically won't fire again for 5 min
+
 [rules.trigger]
-kind = "large_value"
-min_eth = 100.0
+kind = "large_value"   # what to look for (see trigger types below)
+min_eth = 100.0        # only fire if transaction value is ≥ 100 ETH
 ```
 
-### Rule trigger types
+Each `[[rules]]` block is one alert. You can define as many as you want. When a flash block contains a transaction matching the trigger, FlashWatch POSTs the alert to the `webhook` URL with a `Authorization: Bearer` header.
 
-| kind | what it matches |
-|---|---|
-| `large_value` | any tx with ETH value ≥ min_eth |
-| `protocol` + `categories = ["dex"]` | DEX swaps |
-| `protocol` + `categories = ["bridge"]` | bridge activity |
-| `address` + `address = "0x..."` | specific wallet activity |
+### Trigger types
+
+| `kind` | What it watches | Extra fields |
+|---|---|---|
+| `large_value` | Any ETH transfer ≥ threshold | `min_eth` |
+| `protocol` + `categories = ["dex"]` | DEX swaps on known routers | `min_eth` (optional) |
+| `protocol` + `categories = ["bridge"]` | Bridge deposits/withdrawals | `min_eth` (optional) |
+| `address` | Activity from/to a specific wallet | `address = "0x..."`, `min_eth` (optional) |
+
+### Cooldowns
+
+Cooldowns prevent your agent from being spammed when the same wallet is active repeatedly. `global.cooldown_secs` applies across all rules; `rules.cooldown_secs` overrides it for a specific rule. During a hackathon or testing, lower these to 10–30 seconds. In production, 5 minutes per rule is reasonable.
 
 ---
 
