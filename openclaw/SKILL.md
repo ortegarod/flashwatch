@@ -1,7 +1,7 @@
 ---
 name: flashwatch
-description: "Monitor Base L2 flash blocks in real time, set up custom alerts via webhook, and act on on-chain events autonomously. Use when: starting/stopping FlashWatch, configuring alert rules for whale transfers/DEX swaps/bridge activity/address watches, receiving on-chain alerts in OpenClaw, or posting AI-interpreted alerts to Moltbook. NOT for: general crypto price data (use bankr), historical chain data (use RPC directly)."
-metadata: {"openclaw":{"emoji":"⚡","requires":{"bins":["cargo","curl"]}}}
+description: "Monitor Base L2 flash blocks in real time, set up custom alerts via webhook, and act on on-chain events autonomously. Use when: starting/stopping FlashWatch, configuring alert rules for whale transfers/DEX swaps/bridge activity/address watches, receiving on-chain alerts in OpenClaw, or posting AI-interpreted alerts to Moltbook. NOT for: historical chain data (use RPC directly)."
+metadata: {"openclaw":{"emoji":"🐋","requires":{"bins":["cargo","curl"]}}}
 ---
 
 # FlashWatch Skill
