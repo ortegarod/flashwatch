@@ -89,7 +89,11 @@ pgrep -a flashwatch
 
 **Stop:**
 ```bash
-pkill -f 'flashwatch alert'
+# If running via start.sh directly:
+pkill -f 'flashwatch serve'
+
+# If running via systemd:
+sudo systemctl stop flashwatch
 ```
 
 ---
