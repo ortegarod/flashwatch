@@ -23,20 +23,51 @@ cargo build --release
 
 ## Quickstart (with OpenClaw)
 
-```bash
-# Set up credentials (one time)
-mkdir -p ~/.config/flashwatch
-echo '{"hooks_token": "YOUR_OPENCLAW_HOOKS_TOKEN", "openclaw_url": "http://127.0.0.1:18789"}' \
-  > ~/.config/flashwatch/credentials.json
+### 1. Get your OpenClaw hook token
 
-# Start — installs OpenClaw hook + skill, launches dashboard
+FlashWatch posts alerts to OpenClaw via a webhook. OpenClaw must have hooks enabled, and you need its token.
+
+Find it in your OpenClaw config (`~/.openclaw/openclaw.json`):
+
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "token": "your-token-here"
+  }
+}
+```
+
+If hooks aren't set up yet, add that block and restart OpenClaw (`openclaw gateway restart`).
+
+### 2. Create your credentials file
+
+This file lives **outside the repo** in your home config directory so it's never accidentally committed.
+
+```bash
+mkdir -p ~/.config/flashwatch
+cat > ~/.config/flashwatch/credentials.json <<EOF
+{
+  "hooks_token": "your-token-here",
+  "openclaw_url": "http://127.0.0.1:18789"
+}
+EOF
+```
+
+- `hooks_token` — the token from your OpenClaw config (keep this secret)
+- `openclaw_url` — where your OpenClaw gateway is running (default: `http://127.0.0.1:18789`)
+
+### 3. Start
+
+```bash
+# Installs OpenClaw hook + skill, launches dashboard
 ./start.sh
 ```
 
-Dashboard runs at **http://localhost:3003** by default.
+Dashboard runs at **http://localhost:3003**. Alerts fire to OpenClaw automatically when rules match.
 
 ```bash
-# Low-threshold test mode (fires frequently, good for verifying the pipeline)
+# Low-threshold test mode (fires frequently, good for verifying end-to-end)
 ./start.sh --test
 ```
 
