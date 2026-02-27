@@ -1,6 +1,6 @@
 ---
 name: flashwatch
-description: "Monitor Base L2 flash blocks in real time, set up custom alerts via webhook, and act on on-chain events autonomously. Use when: starting/stopping FlashWatch, configuring alert rules for whale transfers/DEX swaps/bridge activity/address watches, receiving on-chain alerts in OpenClaw, or posting AI-interpreted alerts to Moltbook. NOT for: historical chain data (use RPC directly)."
+description: "Monitor Base L2 flash blocks in real time and trigger autonomous agent actions on on-chain events. Use when: installing or running FlashWatch, configuring alert rules for whale transfers/DEX swaps/bridge activity/address watches, verifying the alert pipeline is working, or troubleshooting. NOT for: historical chain data (use RPC directly)."
 metadata: {"openclaw":{"emoji":"🐋","requires":{"bins":["cargo","curl"]}}}
 ---
 
@@ -19,9 +19,9 @@ Base Flashblocks WebSocket (~200ms pre-confirmation)
         ↓
   flashwatch (Rust binary) — rule-based detection, zero AI cost
         ↓ webhook POST with Bearer token on rule match
-  OpenClaw /hooks/flashwatch — transform fires, agent session receives alert
+  OpenClaw /hooks/flashwatch — runs hook-transform.js
         ↓
-  Agent acts: posts to Moltbook, sends notification, etc.
+  Isolated agent session — executes whatever the transform instructs
 ```
 
 ---
@@ -172,38 +172,33 @@ Cooldowns prevent your agent from being spammed when the same wallet is active r
 
 ---
 
-## How Alerts Reach You
+## How the Alert Pipeline Works
 
-When a rule fires, FlashWatch POSTs a JSON payload to OpenClaw's hook endpoint. OpenClaw runs the transform at `openclaw/hook-transform.js`, which converts the raw payload into a natural-language agent message. You receive that message as your task — research the wallets, interpret the movement, and take action.
+When a rule fires, FlashWatch POSTs a JSON payload to OpenClaw's hook endpoint. OpenClaw runs `openclaw/hook-transform.js`, which converts the raw payload into an agent message and fires an isolated agent session. That session executes whatever the transform instructs — it could post to a social network, send a notification, call an API, or anything else.
 
-**You do not receive the raw JSON directly.** The transform handles the formatting. But you should understand what the underlying data contains so you can work with it effectively.
+**The transform is the bridge between the Rust monitor and your agent.** The isolated session never reads this SKILL.md — it reads the message built by the transform. To change what your agent does on alert, edit the transform.
 
-### What the payload contains
+### Alert payload structure
+
+This is what OpenClaw receives from FlashWatch and passes to the transform:
 
 ```json
 {
-  "rule_name": "whale-transfer",   // which rule fired — tells you what kind of event this is
-  "block_number": 42682748,        // Base block number — use for Basescan lookups
-  "flashblock_index": 2,           // position within the flash block (pre-confirmation)
+  "rule_name": "whale-transfer",   // which rule fired
+  "block_number": 42682748,        // Base block number
+  "flashblock_index": 2,           // position within the flash block
   "tx": {
-    "hash": "0xabc...",            // transaction hash — link to basescan.org/tx/<hash>
-    "from": "0x1234...",           // sending wallet address
-    "to": "0x5678...",             // receiving wallet address
-    "to_label": "Bybit Hot Wallet 6",  // known label if recognized, null if unknown
-    "value_eth": 505.01,           // ETH value of the transaction
-    "category": "unknown"          // detected category: "dex", "bridge", "transfer", or "unknown"
+    "hash": "0xabc...",            // transaction hash
+    "from": "0x1234...",           // sending address
+    "to": "0x5678...",             // receiving address
+    "to_label": "Bybit Hot Wallet 6",  // known label, or null if unknown
+    "value_eth": 505.01,           // ETH value
+    "category": "unknown"          // "dex", "bridge", "transfer", or "unknown"
   }
 }
 ```
 
-### What you do with it
-
-The transform turns this into your instructions. Your job every time:
-1. **Identify** the wallets — use `to_label` if available, otherwise research via Basescan
-2. **Interpret** the movement — what does this transaction signal?
-3. **Act** — post to Moltbook, send a notification, or whatever your rules say to do
-
-If `to_label` is null and the wallet is unknown, that's the most interesting case — research it.
+Useful when writing or debugging a custom transform.
 
 ---
 
