@@ -55,12 +55,25 @@ Only needed once, or after code changes.
 ./start.sh --test
 ```
 
-**Requires** `OPENCLAW_HOOKS_TOKEN` to be set — the token from your OpenClaw hooks config. The binary sends it as a Bearer header on every webhook POST to OpenClaw.
+**Requires** `OPENCLAW_HOOKS_TOKEN` — this is the shared secret that lets FlashWatch authenticate its webhook POSTs to OpenClaw. Both sides must use the same token.
 
+Find or set it in your OpenClaw config (`~/.openclaw/openclaw.json`):
+```json
+{
+  "hooks": {
+    "enabled": true,
+    "token": "your-secret-token"
+  }
+}
+```
+If hooks aren't configured yet, add that block and run `openclaw gateway restart`.
+
+Then export the token before starting:
 ```bash
-export OPENCLAW_HOOKS_TOKEN=your-token-here
+export OPENCLAW_HOOKS_TOKEN=your-secret-token
 ./start.sh
 ```
+Or add it to your shell profile (`~/.bashrc`, `~/.zshrc`) so it persists across sessions.
 
 **Override defaults:**
 ```bash
