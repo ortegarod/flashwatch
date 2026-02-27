@@ -479,7 +479,7 @@ async fn upstream_reader_with_health(
                                 }
                                 // Fire webhook
                                 if let Some(client) = http_client {
-                                    crate::alert::fire_webhook_pub(client, &engine.config.rules, alert).await;
+                                    crate::alert::fire_webhook_pub(client, &engine.config, alert).await;
                                 }
                             }
                         }

@@ -14,6 +14,10 @@ pub struct RulesConfig {
     pub rules: Vec<Rule>,
     #[serde(default)]
     pub global: GlobalConfig,
+    /// Known address labels. Keys are lowercase hex addresses, values are human-readable names.
+    /// Add your own to rules.toml under [labels].
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]

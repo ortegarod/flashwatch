@@ -127,7 +127,7 @@ async fn connect_and_stream(
 
                         // Fire webhook if configured
                         if let Some(client) = http_client {
-                            fire_webhook(client, &engine.config.rules, &alert).await;
+                            fire_webhook(client, &engine.config, &alert).await;
                         }
                     }
                 }
@@ -170,12 +170,12 @@ fn print_alert(alert: &Alert, count: u64) {
     );
 }
 
-pub async fn fire_webhook_pub(client: &reqwest::Client, rules: &[crate::rules::Rule], alert: &Alert) {
-    fire_webhook(client, rules, alert).await;
+pub async fn fire_webhook_pub(client: &reqwest::Client, config: &crate::rules::RulesConfig, alert: &Alert) {
+    fire_webhook(client, config, alert).await;
 }
 
-async fn fire_webhook(client: &reqwest::Client, rules: &[crate::rules::Rule], alert: &Alert) {
-    let webhook_url = rules.iter()
+async fn fire_webhook(client: &reqwest::Client, config: &crate::rules::RulesConfig, alert: &Alert) {
+    let webhook_url = config.rules.iter()
         .find(|r| r.name == alert.rule_name)
         .and_then(|r| r.webhook.as_ref());
 
@@ -186,7 +186,7 @@ async fn fire_webhook(client: &reqwest::Client, rules: &[crate::rules::Rule], al
 
     // Build the OpenClaw /hooks/agent payload.
     // The message field is the full prompt the isolated agent session receives.
-    let message = build_agent_message(alert);
+    let message = build_agent_message(alert, &config.labels);
     let payload = serde_json::json!({
         "message": message,
         "name": "FlashWatch",
@@ -215,25 +215,9 @@ async fn fire_webhook(client: &reqwest::Client, rules: &[crate::rules::Rule], al
 /// Build the agent message sent to OpenClaw /hooks/agent.
 /// This is the full prompt the isolated agent session receives — it tells the
 /// agent what happened on-chain and what to do about it.
-fn build_agent_message(alert: &Alert) -> String {
-    // Well-known Base/Ethereum addresses. Add your own as you discover them.
-    let known: &[(&str, &str)] = &[
-        ("0x71660c4005ba85c37ccec55d0c4493e66fe775d3", "Coinbase Hot Wallet"),
-        ("0xa9d1e08c7793af67e9d92fe308d5697fb81d3e43", "Coinbase Cold Storage"),
-        ("0x503828976d22510aad0201ac7ec88293211d23da", "Coinbase 2"),
-        ("0xddfabcdc4d8ffc6d5beaf154f18b778f892a0740", "Coinbase 3"),
-        ("0x28c6c06298d514db089934071355e5743bf21d60", "Binance Hot Wallet"),
-        ("0x21a31ee1afc51d94c2efccaa2092ad1028285549", "Binance Cold Wallet"),
-        ("0x3154cf16ccdb4c6d922629664174b904d80f2c35", "Base Bridge (L1)"),
-        ("0x4200000000000000000000000000000000000010", "Base L2 Bridge"),
-        ("0x2626664c2603336e57b271c5c0b26f421741e481", "Uniswap V3 Router (Base)"),
-        ("0x198ef1ec325a96cc354c7266a038be8b5c558f67", "Uniswap Universal Router (Base)"),
-        ("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", "USDC (Base)"),
-    ];
-
+fn build_agent_message(alert: &Alert, labels: &std::collections::HashMap<String, String>) -> String {
     let label = |addr: &str| -> Option<&str> {
-        let lower = addr.to_lowercase();
-        known.iter().find(|(k, _)| *k == lower).map(|(_, v)| *v)
+        labels.get(&addr.to_lowercase()).map(|s| s.as_str())
     };
 
     let fmt_addr = |addr: Option<&str>| -> String {
