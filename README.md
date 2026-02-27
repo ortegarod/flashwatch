@@ -4,14 +4,12 @@ Real-time monitor and analyzer for [Base Flashblocks](https://docs.base.org/docs
 
 ## What it does
 
-Flashblocks are partial blocks streamed by the Base sequencer via WebSocket, typically arriving every ~200ms. `flashwatch` connects to the feed and gives you:
+Flashblocks are partial blocks streamed by the Base sequencer via WebSocket, arriving every ~200ms — before blocks are finalized. `flashwatch` connects to that feed and gives you:
 
 - **Stream** — live flashblock feed with transaction details, gas stats, and decoded transfers
 - **Monitor** — terminal dashboard with real-time metrics (block rate, gas price, tx throughput, latency)
-- **Logs** — filter for specific contract addresses or event topics at flashblock speed
-- **Track** — follow a transaction from submission → flashblock inclusion → canonical finality
 - **Alert** — rule-based alerting on whale transfers, DEX swaps, bridge activity, and more
-- **Serve** — web dashboard with live visualization, alert history, and REST API
+- **Serve** — web dashboard with live visualization, alert history, and REST API ← **start here**
 
 ## Install
 
@@ -21,95 +19,103 @@ Requires [Rust](https://rustup.rs/) 1.85+ (edition 2024).
 git clone https://github.com/ortegarod/flashwatch
 cd flashwatch
 cargo build --release
-./target/release/flashwatch --help
 ```
 
-## Usage
-
-All commands connect to the flashblocks WebSocket feed by default. No API key needed for the public Base endpoint.
+## Quickstart (with OpenClaw)
 
 ```bash
-# Stream live flashblocks
-flashwatch stream
+# Set up credentials (one time)
+mkdir -p ~/.config/flashwatch
+echo '{"hooks_token": "YOUR_OPENCLAW_HOOKS_TOKEN", "openclaw_url": "http://127.0.0.1:18789"}' \
+  > ~/.config/flashwatch/credentials.json
 
-# Full transaction details
-flashwatch stream --full-txs
-
-# Terminal metrics dashboard
-flashwatch monitor
-
-# Filter logs by contract address
-flashwatch logs --address 0x4200000000000000000000000000000000000006
-
-# Track a specific transaction
-flashwatch track 0xabc123...
-
-# Chain info + flashblock status
-flashwatch info
-
-# Alert on rule matches (see rules.example.toml)
-flashwatch alert --rules rules.toml
-
-# Launch web dashboard on :3000
-flashwatch serve --rules rules.toml
+# Start — installs OpenClaw hook + skill, launches dashboard
+./start.sh
 ```
 
-## Configuration
-
-Copy the example env file and rules config:
+Dashboard runs at **http://localhost:3003** by default.
 
 ```bash
-cp .env.example .env
+# Low-threshold test mode (fires frequently, good for verifying the pipeline)
+./start.sh --test
+```
+
+## serve vs alert
+
+`flashwatch serve` and `flashwatch alert` both watch flashblocks and fire webhooks when rules match. The difference:
+
+| | `serve` | `alert` |
+|---|---|---|
+| Web dashboard | ✅ http://localhost:3003 | ❌ |
+| Alert history (SQLite) | ✅ | ❌ |
+| Webhook firing | ✅ | ✅ |
+| Use case | Normal use — you want visibility | Headless / minimal footprint |
+
+**Use `serve`.** Use `alert` only if you're on a resource-constrained machine and don't need the UI.
+
+## Alert Rules
+
+Rules are defined in TOML. Copy the example and customize:
+
+```bash
 cp rules.example.toml rules.toml
 ```
 
-Edit `rules.toml` to define your alert triggers. Rules support:
-- `eth_transfer` — ETH transfers above a threshold
-- `large_value` — any transaction above a value threshold
-- `protocol` — DEX swaps, bridge activity, and other known protocol interactions
-- `address` — watch a specific address
+```toml
+[global]
+cooldown_secs = 120
+max_per_minute = 5
 
-Alerts can fire to stdout or a webhook URL.
-
-## Output formats
-
-```bash
-flashwatch --format pretty stream   # colored terminal output (default)
-flashwatch --format json stream     # JSON lines for piping
+[[rules]]
+name = "whale-transfer"
+webhook = "http://127.0.0.1:18789/hooks/flashwatch"  # OpenClaw endpoint
+cooldown_secs = 300
+[rules.trigger]
+kind = "large_value"
+min_eth = 100.0
 ```
 
-## Environment variables
+Trigger types: `large_value`, `protocol` (categories: `dex`, `bridge`), `address`
 
-| Variable | Default | Description |
-|---|---|---|
-| `BASE_WS_URL` | `wss://mainnet.flashblocks.base.org/ws` | Flashblocks WebSocket endpoint |
-| `BASE_RPC_URL` | `https://mainnet.base.org` | Base HTTP RPC endpoint |
+## OpenClaw Integration
+
+`flashwatch` integrates natively with [OpenClaw](https://openclaw.ai) — when a rule fires, it POSTs the alert directly to OpenClaw's hook endpoint with a Bearer token. OpenClaw routes it to an agent session for AI interpretation and autonomous posting to [Moltbook /m/lablab](https://moltbook.com/m/lablab).
+
+```
+Base flashblocks feed (200ms)
+  → flashwatch (Rust) — rule matching
+  → OpenClaw /hooks/flashwatch (Bearer auth)
+  → Agent session — research wallets, interpret movement, post to Moltbook
+```
+
+`start.sh` handles everything: installs the OpenClaw hook transform and skill from `openclaw/`, loads your credentials, and starts the monitor.
+
+See `openclaw/SKILL.md` for full agent instructions.
+
+## Other Commands
+
+```bash
+# Live stream
+./target/release/flashwatch stream
+./target/release/flashwatch stream --full-txs
+
+# Terminal metrics dashboard
+./target/release/flashwatch monitor
+
+# Filter by contract address
+./target/release/flashwatch logs --address 0x4200...
+
+# Track a tx to finality
+./target/release/flashwatch track 0xabc123...
+```
 
 ## Stack
 
 - [alloy](https://github.com/alloy-rs/alloy) — Ethereum types and RPC
 - [tokio](https://tokio.rs/) — async runtime
-- [axum](https://github.com/tokio-rs/axum) — web server for the dashboard
-- [rusqlite](https://github.com/rusqlite/rusqlite) — alert history storage
+- [axum](https://github.com/tokio-rs/axum) — web dashboard
+- [rusqlite](https://github.com/rusqlite/rusqlite) — alert history
 - [clap](https://github.com/clap-rs/clap) — CLI
-
-## Moltbook Integration (OpenClaw)
-
-FlashWatch includes a Moltbook relay that autonomously posts whale alerts to [Moltbook /m/lablab](https://moltbook.com/m/lablab) — the AI agent social network. This is the OpenClaw integration for the SURGE × OpenClaw Hackathon.
-
-```bash
-# Start flashwatch + Moltbook relay together
-./start.sh
-
-# Test with low thresholds (fires frequently for demo)
-./start.sh --test
-```
-
-The relay (`moltbook-relay/index.js`) runs as a local webhook server. Flashwatch fires JSON webhooks on rule matches; the relay formats and posts them to Moltbook. Live Base flashblock activity → autonomous agent posts.
-
-Rule files (not committed — copy from `rules.example.toml` and customize):
-- `rules-moltbook.toml` — production thresholds (whale ≥5 ETH, large value ≥10 ETH, DEX ≥1 ETH, bridge ≥0.5 ETH)
-- `rules-test-moltbook.toml` — low thresholds for testing the pipeline (fires frequently)
 
 ## Built for
 

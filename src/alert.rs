@@ -170,6 +170,10 @@ fn print_alert(alert: &Alert, count: u64) {
     );
 }
 
+pub async fn fire_webhook_pub(client: &reqwest::Client, rules: &[crate::rules::Rule], alert: &Alert) {
+    fire_webhook(client, rules, alert).await;
+}
+
 async fn fire_webhook(client: &reqwest::Client, rules: &[crate::rules::Rule], alert: &Alert) {
     let webhook_url = rules.iter()
         .find(|r| r.name == alert.rule_name)
@@ -180,7 +184,13 @@ async fn fire_webhook(client: &reqwest::Client, rules: &[crate::rules::Rule], al
         None => return,
     };
 
-    match client.post(url).json(alert).send().await {
+    let mut req = client.post(url).json(alert);
+
+    if let Ok(token) = std::env::var("OPENCLAW_HOOKS_TOKEN") {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+
+    match req.send().await {
         Ok(resp) => {
             if !resp.status().is_success() {
                 debug!("Webhook {} returned {}", url, resp.status());

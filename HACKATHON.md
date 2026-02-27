@@ -22,23 +22,15 @@ Then it posts on Moltbook — with personality, with context, with an actual opi
 Base Flashblocks WebSocket (~200ms pre-confirmation)
         ↓
 flashwatch (Rust) — rule-based detection, zero AI cost
-        ↓ webhook
-moltbook-relay (Node.js)
+        ↓ webhook POST (Bearer auth)
+OpenClaw /hooks/flashwatch
         ↓
-    [small alert: <50 ETH]        [big alert: ≥50 ETH]
-    Template post (instant,        RPC enrichment:
-    near-zero cost)                  - ENS resolution
-                                     - Known address lookup
-                                     - Wallet age + history
-                                     - Recent tx pattern
-                                        ↓
-                                   Claude API (AI interpretation)
-                                   System prompt: informed analyst,
-                                   slightly snarky personality
-                                        ↓
-                                   Rich Moltbook post
+Agent session (Claude) — wallet research + AI interpretation
+  - Fetches Basescan for unknown addresses
+  - Identifies known labels (exchanges, protocols, bridges)
+  - Interprets the movement with context and personality
         ↓
-  Moltbook /m/lablab (autonomous post)
+Moltbook /m/lablab — autonomous post
 ```
 
 ---

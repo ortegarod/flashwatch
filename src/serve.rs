@@ -97,11 +97,26 @@ pub async fn run(
         rpc_url: _rpc_url.to_string(),
     });
 
+    // HTTP client for webhook firing
+    let has_webhooks = rules_engine.as_ref()
+        .map(|re| re.try_lock().ok()
+            .map(|e| e.config.rules.iter().any(|r| r.webhook.is_some()))
+            .unwrap_or(false))
+        .unwrap_or(false);
+    let webhook_client: Option<Arc<reqwest::Client>> = if has_webhooks {
+        Some(Arc::new(reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()?))
+    } else {
+        None
+    };
+
     // Spawn the upstream flashblocks reader (with optional rule engine)
     let ws_url = ws_url.to_string();
     let reader_state = state.clone();
     let rules_engine = rules_engine.map(|e| Arc::new(e));
     let rules_ref = rules_engine.clone();
+    let webhook_client_ref = webhook_client.clone();
     tokio::spawn(async move {
         let mut retry_delay = 2u64;
         loop {
@@ -109,7 +124,7 @@ pub async fn run(
                 let mut h = reader_state.health.write().await;
                 h.connected = false;
             }
-            match upstream_reader_with_health(&ws_url, &reader_state, rules_ref.as_ref()).await {
+            match upstream_reader_with_health(&ws_url, &reader_state, rules_ref.as_ref(), webhook_client_ref.as_deref()).await {
                 Ok(()) => break,
                 Err(e) => {
                     {
@@ -392,6 +407,7 @@ async fn upstream_reader_with_health(
     ws_url: &str,
     state: &Arc<AppState>,
     rules: Option<&Arc<tokio::sync::Mutex<RuleEngine>>>,
+    http_client: Option<&reqwest::Client>,
 ) -> eyre::Result<()> {
     let (mut ws, _) = tokio_tungstenite::connect_async(ws_url).await?;
     info!("Connected to upstream flashblocks feed");
@@ -454,11 +470,16 @@ async fn upstream_reader_with_health(
                     if let Some(tx_hex) = tx_val.as_str() {
                         if let Some(decoded) = crate::decode::decode_raw_tx(tx_hex) {
                             let alerts = engine.check(&decoded, block_number, fb.index);
-                            if let Some(ref store) = state.store {
-                                for alert in &alerts {
+                            for alert in &alerts {
+                                // Store to SQLite
+                                if let Some(ref store) = state.store {
                                     if let Err(e) = store.insert(alert) {
                                         tracing::debug!("Failed to store alert: {}", e);
                                     }
+                                }
+                                // Fire webhook
+                                if let Some(client) = http_client {
+                                    crate::alert::fire_webhook_pub(client, &engine.config.rules, alert).await;
                                 }
                             }
                         }
