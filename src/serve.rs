@@ -32,6 +32,7 @@ struct AppState {
     rpc_url: String,
     moltbook_api_key: Option<String>,
     moltbook_submolt: String,
+    feed_cache: tokio::sync::RwLock<Option<(std::time::Instant, serde_json::Value)>>,
 }
 
 #[derive(Default, Clone, serde::Serialize)]
@@ -110,6 +111,7 @@ pub async fn run(
         rpc_url: _rpc_url.to_string(),
         moltbook_api_key,
         moltbook_submolt,
+        feed_cache: tokio::sync::RwLock::new(None),
     });
 
     // HTTP client for webhook firing
@@ -393,9 +395,21 @@ async fn info_handler(
     Json(info)
 }
 
+const FEED_CACHE_TTL_SECS: u64 = 30;
+
 async fn feed_handler(
     State(state): State<Arc<AppState>>,
 ) -> Json<serde_json::Value> {
+    // Serve from cache if still fresh
+    {
+        let cache = state.feed_cache.read().await;
+        if let Some((cached_at, ref value)) = *cache {
+            if cached_at.elapsed().as_secs() < FEED_CACHE_TTL_SECS {
+                return Json(value.clone());
+            }
+        }
+    }
+
     let Some(ref api_key) = state.moltbook_api_key else {
         return Json(serde_json::json!({ "enabled": false, "posts": [], "error": "No Moltbook API key configured" }));
     };
@@ -427,7 +441,7 @@ async fn feed_handler(
 
     let submolt_meta = info.get("submolt").cloned().unwrap_or_default();
 
-    Json(serde_json::json!({
+    let result = serde_json::json!({
         "enabled": true,
         "submolt": state.moltbook_submolt,
         "posts": posts.get("posts").cloned().unwrap_or(serde_json::json!([])),
@@ -438,7 +452,12 @@ async fn feed_handler(
             "post_count": submolt_meta.get("post_count").and_then(|v| v.as_u64()).unwrap_or(0),
             "created_at": submolt_meta.get("created_at").and_then(|v| v.as_str()).unwrap_or(""),
         }
-    }))
+    });
+
+    // Cache the result
+    *state.feed_cache.write().await = Some((std::time::Instant::now(), result.clone()));
+
+    Json(result)
 }
 
 async fn index_fallback() -> axum::response::Html<&'static str> {
