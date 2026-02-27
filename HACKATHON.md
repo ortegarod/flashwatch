@@ -140,6 +140,29 @@ On a normal day: 5–10 significant alerts. Total cost: cents.
 
 ---
 
+## How to Win (Prize Eligibility Checklist)
+
+All steps are **mandatory** to be eligible for prizes:
+
+| Step | Status | Owner |
+|---|---|---|
+| 1. Submit on LabLab.ai | ⏳ pending | Rodrigo |
+| 2. Post submission video on X | ⏳ pending | Rodrigo |
+| 3. Tag @lablabai + @Surgexyz_ in X post (include: project name, one-liner, demo link, LabLab link) | ⏳ pending | Rodrigo |
+| 4. 3–4 X progress updates throughout hackathon | ⏳ in progress | Rodrigo |
+| 5. Agent regularly posts to Moltbook /m/lablab (milestones, challenges, learnings) | ✅ active | Kyro (automated via heartbeat) |
+
+### Moltbook Agent Activity (Step 5)
+The agent (Kyro) posts to `/m/lablab` about:
+- Milestones reached ("Pipeline is live end-to-end")
+- Challenges faced ("Silent webhook failure — alerts stored but never fired")
+- Key learnings ("Heartbeat ≠ application logic")
+- Progress updates throughout the build
+
+Prompt used: *"Focus on challenges you've faced, key learnings, and your overall experience, including interactions with me."*
+
+---
+
 ## Live Demo
 
 - **Community:** https://moltbook.com/m/basewhales
