@@ -13,8 +13,8 @@
  * Set FLASHWATCH_MOLTBOOK_SUBMOLT env var to target your own community.
  */
 
-// Target Moltbook community. Override with FLASHWATCH_MOLTBOOK_SUBMOLT env var.
-const MOLTBOOK_SUBMOLT = process.env.FLASHWATCH_MOLTBOOK_SUBMOLT || 'general';
+// Target Moltbook community. Change this to your submolt name.
+const MOLTBOOK_SUBMOLT = process.env.FLASHWATCH_MOLTBOOK_SUBMOLT || 'basewhales';
 
 // Well-known Base/Ethereum addresses. Add your own as you discover them.
 const KNOWN_ADDRESSES = {
