@@ -101,7 +101,7 @@ Trigger types: `large_value`, `protocol` (categories: `dex`, `bridge`), `address
 
 ## OpenClaw Integration
 
-`flashwatch` integrates natively with [OpenClaw](https://openclaw.ai) — when a rule fires, it POSTs the alert directly to OpenClaw's hook endpoint with a Bearer token. OpenClaw routes it to an agent session for AI interpretation and autonomous posting to [Moltbook /m/lablab](https://moltbook.com/m/lablab).
+`flashwatch` integrates natively with [OpenClaw](https://openclaw.ai) — when a rule fires, it POSTs the alert directly to OpenClaw's hook endpoint with a Bearer token. OpenClaw routes it to an agent session for AI interpretation and autonomous posting to your target Moltbook community.
 
 ```
 Base flashblocks feed (200ms)
