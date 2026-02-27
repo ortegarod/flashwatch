@@ -28,10 +28,23 @@ ln -sf "$OPENCLAW_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
 echo "✓ Installed skill → $SKILL_DIR/SKILL.md"
 
 # ── Pick rules file ────────────────────────────────────────────────────────────
-RULES="rules-moltbook.toml"
+# Default: rules.toml (copy rules.example.toml and customize)
+# Override: FLASHWATCH_RULES=my-rules.toml ./start.sh
+RULES="${FLASHWATCH_RULES:-rules.toml}"
 if [ "$1" == "--test" ]; then
-  RULES="rules-test-moltbook.toml"
-  echo "⚠️  Using low-threshold TEST rules"
+  # Test mode uses a low threshold (e.g. 1 ETH) so alerts fire frequently.
+  # Useful for verifying the full pipeline end-to-end without waiting for a real whale.
+  # Create rules-test.toml from rules.example.toml with min_eth set very low.
+  RULES="rules-test.toml"
+  echo "⚠️  Test mode — using low-threshold rules ($RULES)"
+fi
+
+if [ ! -f "$RULES" ]; then
+  echo "ERROR: rules file '$RULES' not found."
+  echo "Copy rules.example.toml and customize it:"
+  echo "  cp rules.example.toml rules.toml"
+  echo "  # edit rules.toml: set webhook URL and thresholds"
+  exit 1
 fi
 
 # ── Check OpenClaw token ──────────────────────────────────────────────────────

@@ -41,15 +41,33 @@ Only needed once, or after code changes.
 
 ## Running
 
+`start.sh` does three things every time you run it:
+1. Builds the binary if it doesn't exist yet
+2. Symlinks `openclaw/hook-transform.js` and `openclaw/SKILL.md` into your OpenClaw config
+3. Starts `flashwatch serve` with your rules file and dashboard
+
 ```bash
-# Start (production rules, posts to OpenClaw)
+# Normal start — uses rules.toml, dashboard at http://localhost:3003
 ./start.sh
 
-# Low-threshold test mode (fires frequently, good for verifying end-to-end)
+# Test mode — uses rules-test.toml (set min_eth very low, e.g. 1 ETH)
+# Use this to verify the full pipeline without waiting for a real whale alert
 ./start.sh --test
 ```
 
-`start.sh` reads `OPENCLAW_HOOKS_TOKEN` from the environment. The Rust binary sends it as a Bearer header on every webhook request to OpenClaw.
+**Requires** `OPENCLAW_HOOKS_TOKEN` to be set — the token from your OpenClaw hooks config. The binary sends it as a Bearer header on every webhook POST to OpenClaw.
+
+```bash
+export OPENCLAW_HOOKS_TOKEN=your-token-here
+./start.sh
+```
+
+**Override defaults:**
+```bash
+FLASHWATCH_RULES=my-rules.toml ./start.sh   # use a different rules file
+FLASHWATCH_BIND=0.0.0.0 ./start.sh          # bind to all interfaces
+FLASHWATCH_PORT=8080 ./start.sh             # use a different port
+```
 
 **Check if running:**
 ```bash
