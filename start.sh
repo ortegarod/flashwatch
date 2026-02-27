@@ -43,7 +43,7 @@ if [ ! -f "$CREDS" ]; then
 fi
 TOKEN=$(python3 -c "import json; d=json.load(open('$CREDS')); print(d['hooks_token'])")
 
-BIND="${FLASHWATCH_BIND:-100.71.117.120}"
+BIND="${FLASHWATCH_BIND:-127.0.0.1}"
 PORT="${FLASHWATCH_PORT:-3003}"
 
 echo "Starting FlashWatch — dashboard at http://${BIND}:${PORT}"

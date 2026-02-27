@@ -6,15 +6,18 @@ cooldown_secs = 10      # Min seconds between fires of same rule
 max_per_minute = 30     # Global rate limit across all rules
 batch_secs = 0          # 0 = fire immediately
 
-# Whale ETH transfers (>5 ETH)
+# Whale ETH transfers (>100 ETH)
+# For OpenClaw integration, webhook fires into an isolated agent session
+# that researches the wallet and posts to Moltbook autonomously.
 [[rules]]
 name = "whale-transfer"
 enabled = true
-# webhook = "https://your-bot.com/hook"
+# webhook = "http://127.0.0.1:18789/hooks/flashwatch"  # OpenClaw (local)
+# webhook = "https://your-bot.com/hook"                # Custom endpoint
 
 [rules.trigger]
-kind = "eth_transfer"
-min_eth = 5.0
+kind = "large_value"
+min_eth = 100.0
 
 # Large value transactions (any type, >10 ETH)
 [[rules]]

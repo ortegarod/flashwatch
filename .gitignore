@@ -14,8 +14,12 @@ rules-live.toml
 rules-test.toml
 rules.toml
 
-# Node.js
-moltbook-relay/node_modules/
+# Node.js / relay (removed — Rust posts directly to OpenClaw)
+moltbook-relay/
+
+# Runtime logs
+alerts.log
+*.log
 
 # Personal Moltbook rule files (contain internal webhook URLs)
 rules-moltbook.toml
