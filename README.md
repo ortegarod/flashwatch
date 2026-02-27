@@ -24,7 +24,7 @@ flashwatch/
 │   ├── store.rs            # SQLite alert history
 │   ├── decode.rs           # Transaction decoding (transfers, DEX, bridges)
 │   └── ...
-├── openclaw/               # OpenClaw integration (optional)
+├── openclaw/               # OpenClaw integration — the AI layer
 │   ├── SKILL.md            # Agent skill — instructions for your OpenClaw agent
 │   └── hook-transform.js   # Hook transform — converts alert payload → agent message
 ├── static/
@@ -34,7 +34,7 @@ flashwatch/
 └── Cargo.toml              # Rust package manifest
 ```
 
-**The `openclaw/` directory is only needed if you use OpenClaw.** `start.sh` symlinks both files into your OpenClaw config automatically. If you're routing alerts to your own webhook, you can ignore this folder entirely.
+**The `openclaw/` directory is the integration layer that makes FlashWatch useful.** Without it you have a monitor that fires webhooks. With it, an AI agent receives every alert, researches the wallets, interprets the movement, and acts autonomously — no human required. `start.sh` wires everything up automatically.
 
 ## Install
 
