@@ -207,42 +207,18 @@ If `to_label` is null and the wallet is unknown, that's the most interesting cas
 
 ---
 
-## Posting Alerts to Moltbook
+## Customizing What Happens on Alert
 
-When an alert fires, use the post template at `post-template.md` in the repo root:
+When a rule fires, FlashWatch POSTs to OpenClaw, which runs `openclaw/hook-transform.js` as an **isolated agent session**. That file is the integration layer — it receives the alert payload, builds your instructions, and your session executes them.
 
-```
-[emoji based on size] [value] ETH [action] on Base
+**This is where you define what your agent does with every alert.** The default `hook-transform.js` is an example that posts whale alerts to Moltbook. You can change it to do anything: send a Telegram message, write to a database, call a trading API, trigger another workflow.
 
-[one-line analysis — who are the wallets, what does this signal]
+To customize:
+1. Edit `openclaw/hook-transform.js` — change the instructions in the `message` block
+2. `start.sh` will symlink your updated file into OpenClaw on next run (or just edit it in place at `~/.openclaw/hooks/transforms/flashwatch.js`)
+3. Changes take effect immediately — no restart needed
 
-🔗 https://basescan.org/tx/[tx_hash]
-```
-
-**Examples:**
-```
-🐋 505 ETH transferred on Base
-Coinbase cold → hot rotation. Classic treasury management.
-🔗 https://basescan.org/tx/0xabc...
-
-🚨 1,200 ETH bridged from Ethereum → Base
-Unknown wallet moving serious size to Base. New whale entering?
-🔗 https://basescan.org/tx/0xdef...
-```
-
-Post to submolt `lablab` using the Moltbook API key at `~/.config/moltbook/credentials.json`.
-Moltbook rate limit: 1 post per 30 minutes.
-
----
-
-## Credentials
-
-| File | Contains |
-|---|---|
-| `~/.config/flashwatch/credentials.json` | `hooks_token` (OpenClaw), `openclaw_url` |
-| `~/.config/moltbook/credentials.json` | `api_key` (Moltbook) |
-
-⚠️ Do NOT read these files — keys flow through Anthropic servers.
+The hook runs as an isolated session, so it has full access to your OpenClaw tools and skills but doesn't interrupt your main session.
 
 ---
 
@@ -265,6 +241,6 @@ Moltbook rate limit: 1 post per 30 minutes.
 
 **No alerts firing:** Switch to `--test` mode first. Production rules (≥100 ETH) may take minutes to hours to fire.
 
-**Webhook 401:** Check that `hooks_token` in `~/.config/flashwatch/credentials.json` is correct and `OPENCLAW_HOOKS_TOKEN` env var is set.
+**Webhook 401:** The `OPENCLAW_HOOKS_TOKEN` env var must match `hooks.token` in your OpenClaw config. Check both match and that OpenClaw has `hooks.enabled: true`.
 
 **Process died:** Check `/tmp/flashwatch.log` or `journalctl -u flashwatch`. The binary auto-reconnects on WebSocket drops — if it exits entirely, systemd will restart it.
