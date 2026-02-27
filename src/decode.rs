@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use alloy_primitives::keccak256;
 use serde::Serialize;
 
 /// Known contract addresses on Base mainnet.
@@ -247,8 +248,10 @@ pub fn decode_raw_tx(hex_str: &str) -> Option<DecodedTx> {
         .map(|l| l.category)
         .unwrap_or(Category::Unknown);
 
+    let tx_hash = format!("0x{:x}", keccak256(&bytes));
+
     Some(DecodedTx {
-        hash: None, // set later from receipt
+        hash: Some(tx_hash),
         from: None, // not in raw tx without recovery
         to: to_hex,
         to_label,

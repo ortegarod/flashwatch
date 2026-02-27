@@ -100,6 +100,7 @@ pub struct Alert {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AlertTx {
+    pub hash: Option<String>,
     pub from: Option<String>,
     pub to: Option<String>,
     pub to_label: Option<String>,
@@ -111,6 +112,7 @@ pub struct AlertTx {
 impl From<&DecodedTx> for AlertTx {
     fn from(tx: &DecodedTx) -> Self {
         Self {
+            hash: tx.hash.clone(),
             from: tx.from.clone(),
             to: tx.to.clone(),
             to_label: tx.to_label.as_ref().map(|l| l.name.to_string()),

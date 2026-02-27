@@ -11,6 +11,29 @@ const http = require('http');
 const fs   = require('fs');
 const path = require('path');
 
+// ── Logging ───────────────────────────────────────────────────────────────────
+
+const LOG_ENABLED = process.env.RELAY_LOG !== '0';
+const LOG_PATH    = process.env.RELAY_LOG_PATH || path.join(__dirname, '..', 'alerts.log');
+
+function logAlert(payload, openclawStatus) {
+  if (!LOG_ENABLED) return;
+  const entry = {
+    ts: new Date().toISOString(),
+    rule_name: payload.rule_name,
+    value_eth: payload.tx?.value_eth,
+    from: payload.tx?.from,
+    to: payload.tx?.to,
+    to_label: payload.tx?.to_label,
+    tx_hash: payload.tx?.hash,
+    basescan: payload.tx?.hash ? `https://basescan.org/tx/${payload.tx.hash}` : null,
+    category: payload.tx?.category,
+    block: payload.block_number,
+    openclaw_status: openclawStatus,
+  };
+  fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');
+}
+
 const PORT = process.env.RELAY_PORT || 4747;
 const BIND = process.env.RELAY_BIND || '127.0.0.1';
 
@@ -37,6 +60,7 @@ http.createServer((req, res) => {
       const body = Buffer.concat(chunks);
       console.log(`[${new Date().toISOString()}] forwarding ${body.length}b → OpenClaw`);
 
+      const parsed = JSON.parse(body);
       const fwd = http.request({
         hostname: OPENCLAW_URL.hostname,
         port:     OPENCLAW_URL.port || 18789,
@@ -50,7 +74,10 @@ http.createServer((req, res) => {
       }, r => {
         let out = '';
         r.on('data', c => out += c);
-        r.on('end', () => console.log(`[openclaw] ${r.statusCode} ${out.slice(0, 80)}`));
+        r.on('end', () => {
+          console.log(`[openclaw] ${r.statusCode} ${out.slice(0, 80)}`);
+          logAlert(parsed, r.statusCode);
+        });
       });
 
       fwd.on('error', e => console.error('[openclaw] forward error:', e.message));
