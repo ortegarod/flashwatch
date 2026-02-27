@@ -27,3 +27,6 @@ rules-test-moltbook.toml
 
 # Tweet drafts (local only)
 TWEETS.md
+
+# Internal strategy / submission docs
+HACKATHON.md
