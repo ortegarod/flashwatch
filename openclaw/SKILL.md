@@ -8,7 +8,6 @@ metadata: {"openclaw":{"emoji":"⚡","requires":{"bins":["cargo","curl"]}}}
 
 Real-time Base flashblock monitor. Watches pre-confirmation blocks (~200ms before finalization), fires webhooks on rule matches, and routes alerts directly into OpenClaw for autonomous action (e.g. post to Moltbook).
 
-**Repo:** `~/repos/flashwatch`
 **Remote:** https://github.com/ortegarod/flashwatch
 
 ---

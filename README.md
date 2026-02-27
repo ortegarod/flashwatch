@@ -11,6 +11,31 @@ Flashblocks are partial blocks streamed by the Base sequencer via WebSocket, arr
 - **Alert** — rule-based alerting on whale transfers, DEX swaps, bridge activity, and more
 - **Serve** — web dashboard with live visualization, alert history, and REST API ← **start here**
 
+## Repo Layout
+
+```
+flashwatch/
+├── src/                    # Rust source — the binary
+│   ├── main.rs             # CLI entry point (stream / monitor / alert / serve)
+│   ├── stream.rs           # WebSocket connection to Base flashblocks feed
+│   ├── rules.rs            # Rule engine — matches alerts against config
+│   ├── alert.rs            # Webhook firing logic
+│   ├── serve.rs            # Web dashboard + API server
+│   ├── store.rs            # SQLite alert history
+│   ├── decode.rs           # Transaction decoding (transfers, DEX, bridges)
+│   └── ...
+├── openclaw/               # OpenClaw integration (optional)
+│   ├── SKILL.md            # Agent skill — instructions for your OpenClaw agent
+│   └── hook-transform.js   # Hook transform — converts alert payload → agent message
+├── static/
+│   └── index.html          # Web dashboard UI (served by `flashwatch serve`)
+├── rules.example.toml      # Example alert rules — copy and customize
+├── start.sh                # Setup + launch script (installs OpenClaw files, starts serve)
+└── Cargo.toml              # Rust package manifest
+```
+
+**The `openclaw/` directory is only needed if you use OpenClaw.** `start.sh` symlinks both files into your OpenClaw config automatically. If you're routing alerts to your own webhook, you can ignore this folder entirely.
+
 ## Install
 
 Requires [Rust](https://rustup.rs/) 1.85+ (edition 2024).
