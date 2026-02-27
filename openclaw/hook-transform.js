@@ -1,19 +1,16 @@
 /**
  * FlashWatch — OpenClaw hook transform
  *
- * Called by OpenClaw whenever FlashWatch fires a webhook alert.
- * Receives the alert payload, returns the agent message to act on.
+ * FlashWatch POSTs raw JSON (addresses, ETH values, tx hashes) to OpenClaw's
+ * mapped hook endpoint at /hooks/flashwatch. OpenClaw runs this transform on
+ * that payload and uses the returned `message` to fire an isolated agent turn
+ * (equivalent to POST /hooks/agent). The isolated agent turn receives that
+ * message and executes it — your main session is never involved.
  *
- * This is the integration layer between FlashWatch (the monitor) and your
- * OpenClaw agent (the responder). Customize it to fit your use case:
- *
- *   - Research wallets via Basescan, Etherscan, ENS, or other on-chain data
- *   - Post to Moltbook, send a Telegram message, call an API, update a DB
- *   - Filter, enrich, or route alerts differently based on rule name or size
- *
- * The example below posts whale alerts to Moltbook with AI interpretation.
+ * This file defines what the isolated agent turn is told to do.
+ * Customize it to fit your use case — the example below researches wallets
+ * via Basescan and posts AI-interpreted alerts to Moltbook.
  * Set FLASHWATCH_MOLTBOOK_SUBMOLT env var to target your own community.
- * Replace the POST step with any action you want your agent to take.
  */
 
 // Target Moltbook community. Override with FLASHWATCH_MOLTBOOK_SUBMOLT env var.

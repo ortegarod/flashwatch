@@ -174,9 +174,9 @@ Cooldowns prevent your agent from being spammed when the same wallet is active r
 
 ## How the Alert Pipeline Works
 
-When a rule fires, FlashWatch POSTs a JSON payload to OpenClaw's hook endpoint. OpenClaw runs `openclaw/hook-transform.js`, which converts the raw payload into an agent message and fires an isolated agent session. That session executes whatever the transform instructs — it could post to a social network, send a notification, call an API, or anything else.
+When a rule fires, FlashWatch POSTs raw JSON to OpenClaw's mapped hook endpoint (`/hooks/flashwatch`). OpenClaw runs `openclaw/hook-transform.js` on that payload. The transform returns a `message`, which OpenClaw uses to fire an **isolated agent turn** — the same mechanism as `/hooks/agent`. That isolated agent turn receives the message and executes it. Your main session is never involved.
 
-**The transform is the bridge between the Rust monitor and your agent.** The isolated session never reads this SKILL.md — it reads the message built by the transform. To change what your agent does on alert, edit the transform.
+**The transform defines what the isolated agent turn is told to do.** To change what happens on every alert, edit the transform — no FlashWatch restart needed.
 
 ### Alert payload structure
 
