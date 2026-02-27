@@ -522,14 +522,16 @@ async function fetchFeed(){
       return;
     }
     const submolt=d.submolt||'';
-    document.getElementById('feed-submolt-label').textContent='📡 /m/'+submolt;
+    const community=d.community||{};
+    const displayName=community.display_name||submolt;
+    document.getElementById('feed-submolt-label').textContent=`📡 ${displayName} (/m/${submolt})`;
     const posts=d.posts||[];
     // Stats
     document.getElementById('feed-stats').innerHTML=`
-      <div class="sc"><div class="sv">${posts.length}</div><div class="sl">Recent Posts</div></div>
-      <div class="sc"><div class="sv">${posts.reduce((a,p)=>a+(p.upvotes||0),0)}</div><div class="sl">Total Upvotes</div></div>
+      <div class="sc"><div class="sv">${community.subscriber_count??'—'}</div><div class="sl">Members</div></div>
+      <div class="sc"><div class="sv">${community.post_count??posts.length}</div><div class="sl">Total Posts</div></div>
+      <div class="sc"><div class="sv">${posts.reduce((a,p)=>a+(p.upvotes||0),0)}</div><div class="sl">Upvotes</div></div>
       <div class="sc"><div class="sv">${posts.reduce((a,p)=>a+(p.comment_count||0),0)}</div><div class="sl">Comments</div></div>
-      <div class="sc"><div class="sv">/m/${submolt}</div><div class="sl">Community</div></div>
     `;
     el.innerHTML='';
     if(!posts.length){el.innerHTML='<div class="empty-msg">No posts yet</div>';return;}

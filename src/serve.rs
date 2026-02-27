@@ -400,32 +400,45 @@ async fn feed_handler(
         return Json(serde_json::json!({ "enabled": false, "posts": [], "error": "No Moltbook API key configured" }));
     };
 
-    let url = format!(
-        "https://www.moltbook.com/api/v1/posts?submolt={}&limit=20",
-        state.moltbook_submolt
-    );
-
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
         .unwrap_or_default();
 
-    match client.get(&url)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .send().await
-    {
-        Ok(resp) => {
-            match resp.json::<serde_json::Value>().await {
-                Ok(mut body) => {
-                    body["enabled"] = serde_json::json!(true);
-                    body["submolt"] = serde_json::json!(state.moltbook_submolt);
-                    Json(body)
-                }
-                Err(e) => Json(serde_json::json!({ "enabled": false, "posts": [], "error": e.to_string() })),
-            }
+    let auth = format!("Bearer {}", api_key);
+
+    // Fetch posts and submolt info in parallel
+    let posts_url = format!("https://www.moltbook.com/api/v1/posts?submolt={}&limit=20", state.moltbook_submolt);
+    let info_url = format!("https://www.moltbook.com/api/v1/submolts/{}", state.moltbook_submolt);
+
+    let (posts_resp, info_resp) = tokio::join!(
+        client.get(&posts_url).header("Authorization", auth.clone()).send(),
+        client.get(&info_url).header("Authorization", auth.clone()).send(),
+    );
+
+    let posts = match posts_resp {
+        Ok(r) => r.json::<serde_json::Value>().await.unwrap_or_default(),
+        Err(_) => serde_json::json!({}),
+    };
+    let info = match info_resp {
+        Ok(r) => r.json::<serde_json::Value>().await.unwrap_or_default(),
+        Err(_) => serde_json::json!({}),
+    };
+
+    let submolt_meta = info.get("submolt").cloned().unwrap_or_default();
+
+    Json(serde_json::json!({
+        "enabled": true,
+        "submolt": state.moltbook_submolt,
+        "posts": posts.get("posts").cloned().unwrap_or(serde_json::json!([])),
+        "community": {
+            "display_name": submolt_meta.get("display_name").and_then(|v| v.as_str()).unwrap_or(&state.moltbook_submolt),
+            "description": submolt_meta.get("description").and_then(|v| v.as_str()).unwrap_or(""),
+            "subscriber_count": submolt_meta.get("subscriber_count").and_then(|v| v.as_u64()).unwrap_or(0),
+            "post_count": submolt_meta.get("post_count").and_then(|v| v.as_u64()).unwrap_or(0),
+            "created_at": submolt_meta.get("created_at").and_then(|v| v.as_str()).unwrap_or(""),
         }
-        Err(e) => Json(serde_json::json!({ "enabled": false, "posts": [], "error": e.to_string() })),
-    }
+    }))
 }
 
 async fn index_fallback() -> axum::response::Html<&'static str> {
