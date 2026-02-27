@@ -167,6 +167,7 @@
   <button class="tab" data-tab="alerts">Alerts</button>
   <button class="tab" data-tab="analytics">Analytics</button>
   <button class="tab" data-tab="track">Track TX</button>
+  <button class="tab" data-tab="feed">Moltbook Feed</button>
 </div>
 
 <!-- TAB: LIVE -->
@@ -256,6 +257,18 @@
   </div>
 </div>
 
+<!-- TAB: MOLTBOOK FEED -->
+<div class="tab-content" id="tab-feed">
+  <div class="stat-cards" id="feed-stats" style="padding-bottom:0"></div>
+  <div style="padding:12px 32px 0;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em" id="feed-submolt-label"></span>
+    <button onclick="fetchFeed()" style="font-family:var(--font);font-size:11px;padding:5px 12px;background:var(--bg2);color:var(--fg2);border:1px solid var(--bg2);border-radius:6px;cursor:pointer">↻ Refresh</button>
+  </div>
+  <div style="padding:12px 32px">
+    <div class="panel-body" id="feed-list" style="max-height:calc(100vh - 260px);overflow-y:auto"></div>
+  </div>
+</div>
+
 <script>
 // ===== GLOBALS =====
 const MAX_POINTS=80,MAX_EVENTS=50,MAX_BLOCKS=15;
@@ -274,6 +287,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     document.getElementById('tab-'+t.dataset.tab).classList.add('active');
     if(t.dataset.tab==='alerts'){fetchAlertStats();fetchAlerts();fetchRules();}
     if(t.dataset.tab==='analytics'){fetchAnalytics();}
+    if(t.dataset.tab==='feed'){fetchFeed();}
   });
 });
 
@@ -496,6 +510,62 @@ async function fetchAnalytics(){
     `;
   }catch(e){console.error(e)}
 }
+
+// ===== MOLTBOOK FEED =====
+async function fetchFeed(){
+  const el=document.getElementById('feed-list');
+  el.innerHTML='<div class="empty-msg">Loading...</div>';
+  try{
+    const r=await fetch('/api/feed');const d=await r.json();
+    if(!d.enabled){
+      el.innerHTML=`<div class="empty-msg" style="color:var(--red)">${d.error||'Moltbook feed not configured'}</div>`;
+      return;
+    }
+    const submolt=d.submolt||'';
+    document.getElementById('feed-submolt-label').textContent='📡 /m/'+submolt;
+    const posts=d.posts||[];
+    // Stats
+    document.getElementById('feed-stats').innerHTML=`
+      <div class="sc"><div class="sv">${posts.length}</div><div class="sl">Recent Posts</div></div>
+      <div class="sc"><div class="sv">${posts.reduce((a,p)=>a+(p.upvotes||0),0)}</div><div class="sl">Total Upvotes</div></div>
+      <div class="sc"><div class="sv">${posts.reduce((a,p)=>a+(p.comment_count||0),0)}</div><div class="sl">Comments</div></div>
+      <div class="sc"><div class="sv">/m/${submolt}</div><div class="sl">Community</div></div>
+    `;
+    el.innerHTML='';
+    if(!posts.length){el.innerHTML='<div class="empty-msg">No posts yet</div>';return;}
+    for(const p of posts){
+      const ago=timeSince(p.created_at);
+      const url=`https://moltbook.com/post/${p.id}`;
+      const row=document.createElement('div');
+      row.style.cssText='padding:14px 16px;border-bottom:1px solid var(--bg2);';
+      row.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px;color:#fff;margin-bottom:6px">${escHtml(p.title||'')}</div>
+            <div style="font-size:12px;color:var(--fg2);line-height:1.5;white-space:pre-wrap">${escHtml((p.content||'').slice(0,300))}${(p.content||'').length>300?'…':''}</div>
+          </div>
+          <div style="text-align:right;min-width:80px;font-size:10px;color:var(--fg4)">
+            <div>${ago}</div>
+            <div style="margin-top:4px">▲ ${p.upvotes||0} · 💬 ${p.comment_count||0}</div>
+            <a href="${url}" target="_blank" style="display:block;margin-top:6px;color:var(--blue);font-size:10px">view ↗</a>
+          </div>
+        </div>
+      `;
+      el.appendChild(row);
+    }
+  }catch(e){el.innerHTML=`<div class="empty-msg" style="color:var(--red)">Failed to load feed: ${e.message}</div>`;}
+}
+
+function timeSince(iso){
+  if(!iso)return'';
+  const s=Math.floor((Date.now()-new Date(iso))/1000);
+  if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Auto-refresh feed every 30s when tab is active
+setInterval(()=>{if(document.querySelector('.tab[data-tab="feed"]')?.classList.contains('active'))fetchFeed();},30000);
 
 // ===== TRACK TX =====
 async function trackTx(){

@@ -30,6 +30,8 @@ struct AppState {
     health: tokio::sync::RwLock<HealthInfo>,
     rules_config: Option<crate::rules::RulesConfig>,
     rpc_url: String,
+    moltbook_api_key: Option<String>,
+    moltbook_submolt: String,
 }
 
 #[derive(Default, Clone, serde::Serialize)]
@@ -86,6 +88,17 @@ pub async fn run(
         .unwrap_or_default()
         .as_secs();
 
+    // Read Moltbook API key — env var takes precedence, then credentials file
+    let moltbook_api_key = std::env::var("MOLTBOOK_API_KEY").ok().or_else(|| {
+        let creds_path = dirs::home_dir()
+            .map(|h| h.join(".config/moltbook/credentials.json"))?;
+        let contents = std::fs::read_to_string(&creds_path).ok()?;
+        let v: serde_json::Value = serde_json::from_str(&contents).ok()?;
+        v.get("api_key")?.as_str().map(|s| s.to_string())
+    });
+    let moltbook_submolt = std::env::var("FLASHWATCH_MOLTBOOK_SUBMOLT")
+        .unwrap_or_else(|_| "basewhales".to_string());
+
     let state = Arc::new(AppState {
         tx: tx.clone(),
         store,
@@ -95,6 +108,8 @@ pub async fn run(
         }),
         rules_config,
         rpc_url: _rpc_url.to_string(),
+        moltbook_api_key,
+        moltbook_submolt,
     });
 
     // HTTP client for webhook firing
@@ -173,7 +188,8 @@ pub async fn run(
         .route("/api/health", get(health_handler))
         .route("/api/rules", get(rules_handler))
         .route("/api/track/{tx_hash}", get(track_handler))
-        .route("/api/info", get(info_handler));
+        .route("/api/info", get(info_handler))
+        .route("/api/feed", get(feed_handler));
 
     let app = if let Some(ref dir) = static_path {
         info!("Serving frontend from {}", dir.display());
@@ -375,6 +391,41 @@ async fn info_handler(
     }
 
     Json(info)
+}
+
+async fn feed_handler(
+    State(state): State<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    let Some(ref api_key) = state.moltbook_api_key else {
+        return Json(serde_json::json!({ "enabled": false, "posts": [], "error": "No Moltbook API key configured" }));
+    };
+
+    let url = format!(
+        "https://www.moltbook.com/api/v1/posts?submolt={}&limit=20",
+        state.moltbook_submolt
+    );
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .unwrap_or_default();
+
+    match client.get(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .send().await
+    {
+        Ok(resp) => {
+            match resp.json::<serde_json::Value>().await {
+                Ok(mut body) => {
+                    body["enabled"] = serde_json::json!(true);
+                    body["submolt"] = serde_json::json!(state.moltbook_submolt);
+                    Json(body)
+                }
+                Err(e) => Json(serde_json::json!({ "enabled": false, "posts": [], "error": e.to_string() })),
+            }
+        }
+        Err(e) => Json(serde_json::json!({ "enabled": false, "posts": [], "error": e.to_string() })),
+    }
 }
 
 async fn index_fallback() -> axum::response::Html<&'static str> {
