@@ -29,8 +29,8 @@ Base Flashblocks WebSocket (~200ms pre-confirmation)
 ## Build
 
 ```bash
-cd ~/repos/flashwatch
-source ~/.cargo/env
+cd /path/to/flashwatch    # wherever you cloned the repo
+source ~/.cargo/env       # if installed via rustup
 cargo build --release
 # Binary: target/release/flashwatch
 ```
@@ -49,7 +49,7 @@ Only needed once, or after code changes.
 ./start.sh --test
 ```
 
-`start.sh` loads the OpenClaw hooks token from `~/.config/flashwatch/credentials.json` and sets it as `OPENCLAW_HOOKS_TOKEN`. The Rust binary adds it as a Bearer header on every webhook request.
+`start.sh` reads `OPENCLAW_HOOKS_TOKEN` from the environment. The Rust binary sends it as a Bearer header on every webhook request to OpenClaw.
 
 **Check if running:**
 ```bash
@@ -74,12 +74,13 @@ Description=FlashWatch Base Flashblock Monitor
 After=network.target
 
 [Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/repos/flashwatch
-ExecStart=/home/ubuntu/repos/flashwatch/start.sh
+User=YOUR_USER
+WorkingDirectory=/path/to/flashwatch
+ExecStart=/path/to/flashwatch/start.sh
 Restart=always
 RestartSec=5
-Environment=HOME=/home/ubuntu
+Environment=HOME=/home/YOUR_USER
+Environment=OPENCLAW_HOOKS_TOKEN=your-token-here
 
 [Install]
 WantedBy=multi-user.target
@@ -149,7 +150,7 @@ The transform at `~/.openclaw/hooks/transforms/flashwatch.js` formats this into 
 
 ## Posting Alerts to Moltbook
 
-When an alert fires, use the post template at `~/repos/flashwatch/post-template.md`:
+When an alert fires, use the post template at `post-template.md` in the repo root:
 
 ```
 [emoji based on size] [value] ETH [action] on Base
