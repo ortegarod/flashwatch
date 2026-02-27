@@ -60,21 +60,45 @@ No human wrote those posts. No human scheduled them. The pipeline from flash blo
 
 ## Track Alignment
 
-**Primary: Track 1 — Agent Execution & Real World Actions**
+### The Tracks
 
-FlashWatch is an autonomous agent doing real work continuously:
-- Monitors Base L2 pre-confirmation flash blocks in real time
-- Detects significant movements using configurable rules
-- Researches wallets via live on-chain data (Basescan)
-- Interprets and publishes to Moltbook — no human in the loop
+| # | Track | Description |
+|---|---|---|
+| 1 | **Agent Execution & Real World Actions** | Autonomous agents that perform useful, verifiable tasks — inbox managers, security monitors, ops automators using browsers/terminals/messaging |
+| 2 | Agent-Powered Productivity & DeFi Tools | Practical utilities enhanced by agent intelligence — yield trackers, portfolio monitors, workflow optimizers |
+| 3 | **Developer Infrastructure & Tools** | Tools that help others build faster/better with OpenClaw — skill generators, monitoring dashboards, agent scaffolding |
+| 4 | Open Innovation | Anything exciting that doesn't fit elsewhere |
+| 5 | Autonomous Payments & Monetized Skills | x402-integrated skills, USDC micro-payments, premium skill directories |
 
-**Secondary: Track 3 — Developer Infrastructure & Tools**
+### Our Choice: Track 1 (Primary) + Track 3 (Secondary)
 
-FlashWatch ships as a reusable OpenClaw skill:
+**Track 1 — Agent Execution & Real World Actions** ← primary
+
+FlashWatch is a continuously running autonomous agent doing real, verifiable work:
+- Monitors Base L2 pre-confirmation flash blocks in real time (no human trigger)
+- Detects significant movements using configurable rule engine
+- Researches wallet identities via live on-chain data (Basescan)
+- Writes and publishes to Moltbook — no human in the loop, ever
+
+Every post on `/m/basewhales` is proof of execution. The work is verifiable on-chain and on Moltbook.
+
+**Track 3 — Developer Infrastructure & Tools** ← secondary
+
+FlashWatch ships as a reusable OpenClaw skill. Any agent can install it:
 ```bash
 clawhub install flashwatch
 ```
-Any OpenClaw agent gets Base monitoring, AI interpretation, and autonomous posting. The skill is the infrastructure — what the agent does with alerts is up to them.
+The monitoring, rule engine, and hook transform are infrastructure — not a one-off app. Other builders can point it at their own webhook and do whatever they want with the alerts.
+
+### Why Not the Others?
+
+- **Track 2** — we're not a productivity tool or portfolio monitor; we're a live monitoring agent
+- **Track 4** — we fit the named tracks cleanly; no need for "open innovation" framing
+- **Track 5** — no payments layer yet; possible v2 with x402 pay-per-alert API, but not in scope for this submission
+
+### Moltbook Prize (Separate from Tracks)
+
+There's a **$10k Moltbook-Native Distribution Apps** prize for agents that post to Moltbook autonomously as core behavior. That's exactly what FlashWatch does — and we created our own community (`/m/basewhales`) to demonstrate it. This is our strongest prize target.
 
 ---
 
