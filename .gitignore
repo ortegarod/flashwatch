@@ -24,3 +24,6 @@ alerts.log
 # Personal Moltbook rule files (contain internal webhook URLs)
 rules-moltbook.toml
 rules-test-moltbook.toml
+
+# Tweet drafts (local only)
+TWEETS.md
