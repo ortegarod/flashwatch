@@ -34,20 +34,23 @@ if [ "$1" == "--test" ]; then
   echo "⚠️  Using low-threshold TEST rules"
 fi
 
-# ── Load OpenClaw token ────────────────────────────────────────────────────────
-CREDS="$HOME/.config/flashwatch/credentials.json"
-if [ ! -f "$CREDS" ]; then
-  echo "ERROR: credentials not found at $CREDS"
-  echo "Create it with: {\"hooks_token\": \"...\", \"openclaw_url\": \"http://127.0.0.1:18789\"}"
+# ── Check OpenClaw token ──────────────────────────────────────────────────────
+# OPENCLAW_HOOKS_TOKEN must match the token in your OpenClaw config (hooks.token).
+# Set it in your environment or pass it inline: OPENCLAW_HOOKS_TOKEN=... ./start.sh
+if [ -z "$OPENCLAW_HOOKS_TOKEN" ]; then
+  echo "ERROR: OPENCLAW_HOOKS_TOKEN is not set."
+  echo ""
+  echo "Set it to the hooks token from your OpenClaw config (~/.openclaw/openclaw.json):"
+  echo "  export OPENCLAW_HOOKS_TOKEN=your-token-here"
+  echo "  ./start.sh"
   exit 1
 fi
-TOKEN=$(python3 -c "import json; d=json.load(open('$CREDS')); print(d['hooks_token'])")
 
 BIND="${FLASHWATCH_BIND:-127.0.0.1}"
 PORT="${FLASHWATCH_PORT:-3003}"
 
 echo "Starting FlashWatch — dashboard at http://${BIND}:${PORT}"
-OPENCLAW_HOOKS_TOKEN="$TOKEN" ./target/release/flashwatch serve \
+./target/release/flashwatch serve \
   --rules "$RULES" \
   --bind "$BIND" \
   --port "$PORT"

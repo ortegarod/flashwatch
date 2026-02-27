@@ -40,22 +40,13 @@ Find it in your OpenClaw config (`~/.openclaw/openclaw.json`):
 
 If hooks aren't set up yet, add that block and restart OpenClaw (`openclaw gateway restart`).
 
-### 2. Create your credentials file
-
-This file lives **outside the repo** in your home config directory so it's never accidentally committed.
+### 2. Export your token
 
 ```bash
-mkdir -p ~/.config/flashwatch
-cat > ~/.config/flashwatch/credentials.json <<EOF
-{
-  "hooks_token": "your-token-here",
-  "openclaw_url": "http://127.0.0.1:18789"
-}
-EOF
+export OPENCLAW_HOOKS_TOKEN=your-token-here
 ```
 
-- `hooks_token` — the token from your OpenClaw config (keep this secret)
-- `openclaw_url` — where your OpenClaw gateway is running (default: `http://127.0.0.1:18789`)
+FlashWatch and OpenClaw both use this env var — one token, set once. Add it to your shell profile (`~/.bashrc`, `~/.zshrc`) or pass it inline when starting.
 
 ### 3. Start
 

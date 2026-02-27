@@ -1,11 +1,25 @@
 /**
- * FlashWatch webhook transform for OpenClaw hooks
+ * FlashWatch — OpenClaw hook transform
  *
- * Receives FlashWatch alert payloads and returns the agent message
- * that Kyro will act on — research the wallets, interpret the movement,
- * post to Moltbook /m/lablab with personality.
+ * Called by OpenClaw whenever FlashWatch fires a webhook alert.
+ * Receives the alert payload, returns the agent message to act on.
+ *
+ * This is the integration layer between FlashWatch (the monitor) and your
+ * OpenClaw agent (the responder). Customize it to fit your use case:
+ *
+ *   - Research wallets via Basescan, Etherscan, ENS, or other on-chain data
+ *   - Post to Moltbook, send a Telegram message, call an API, update a DB
+ *   - Filter, enrich, or route alerts differently based on rule name or size
+ *
+ * The example below posts whale alerts to Moltbook with AI interpretation.
+ * Set FLASHWATCH_MOLTBOOK_SUBMOLT env var to target your own community.
+ * Replace the POST step with any action you want your agent to take.
  */
 
+// Target Moltbook community. Override with FLASHWATCH_MOLTBOOK_SUBMOLT env var.
+const MOLTBOOK_SUBMOLT = process.env.FLASHWATCH_MOLTBOOK_SUBMOLT || 'general';
+
+// Well-known Base/Ethereum addresses. Add your own as you discover them.
 const KNOWN_ADDRESSES = {
   '0x71660c4005ba85c37ccec55d0c4493e66fe775d3': 'Coinbase Hot Wallet',
   '0xa9d1e08c7793af67e9d92fe308d5697fb81d3e43': 'Coinbase Cold Storage',
@@ -62,7 +76,7 @@ module.exports = function flashwatchTransform(ctx) {
     `1. RESEARCH the wallets if they're unknown.`,
     `   - Fetch the Basescan address pages above using web_fetch`,
     `   - Look for tags, contract names, ENS names, transaction patterns`,
-    `   - Is this a known exchange, protocol, whale, DAO? First seen recently or dormant?`,
+    `   - Is this a known exchange, protocol, whale, or DAO?`,
     `   - Is it a contract or an EOA? What has this address done before?`,
     ``,
     `2. INTERPRET the movement. Ask yourself:`,
@@ -70,24 +84,24 @@ module.exports = function flashwatchTransform(ctx) {
     `   - Cold storage rotation? → routine treasury management, low signal`,
     `   - Bridge deposit? → capital moving cross-chain, where and why?`,
     `   - Unknown wallet moving big size? → who is this and why now?`,
-    `   - Is anything unusual about the timing, size, or counterparty?`,
+    `   - Anything unusual about the timing, size, or counterparty?`,
     ``,
-    `3. WRITE the Moltbook post. Keep it under 280 characters + link. Format:`,
+    `3. WRITE a Moltbook post. Keep it under 280 characters + link. Format:`,
     `   [emoji] [value] ETH [what happened] on Base`,
-    `   [your one-line interpretation — confident, specific, personality]`,
+    `   [one-line interpretation — confident, specific, have a take]`,
     `   🔗 [tx link]`,
     ``,
     `   Emoji guide: 🐋 huge (500+ ETH) | 🦈 large (200-500) | 🔥 interesting (100-200)`,
-    `   Be direct. Have an opinion. If you don't know who the wallet is, say so honestly.`,
+    `   Be direct. If you don't know who the wallet is, say so honestly.`,
     `   Don't make up labels. Don't pad with generic phrases.`,
     ``,
-    `4. POST to Moltbook /m/general using the API:`,
-    `   Key at: ~/.config/moltbook/credentials.json (do NOT read the file — use exec)`,
+    `4. POST to Moltbook using the API (posting to /m/${MOLTBOOK_SUBMOLT}):`,
+    `   Key at: ~/.config/moltbook/credentials.json (use exec, do NOT read the file directly)`,
     `   MOLTKEY=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.config/moltbook/credentials.json'))); print(d['api_key'])")`,
     `   curl -s -X POST "https://www.moltbook.com/api/v1/posts" \\`,
     `     -H "Authorization: Bearer $MOLTKEY" \\`,
     `     -H "Content-Type: application/json" \\`,
-    `     -d '{"submolt":"general","title":"[your title]","content":"[your post]"}'`,
+    `     -d '{"submolt":"${MOLTBOOK_SUBMOLT}","title":"[your title]","content":"[your post]"}'`,
     ``,
     `   Rate limit: 1 post per 30 min. If you get a 429, log it and skip — don't retry.`,
   ].filter(Boolean).join('\n');
