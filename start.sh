@@ -12,17 +12,11 @@ if [ ! -f target/release/flashwatch ]; then
   cargo build --release
 fi
 
-# ── Install OpenClaw hook + skill ─────────────────────────────────────────────
-HOOK_DIR="$HOME/.openclaw/hooks/transforms"
+# ── Install OpenClaw skill ─────────────────────────────────────────────────────
+# Symlinks SKILL.md so your OpenClaw agent can find and use it.
 SKILL_DIR="$HOME/.openclaw/workspace/skills/flashwatch"
 OPENCLAW_DIR="$(pwd)/openclaw"
 
-# Hook transform: tells the agent what to do when an alert fires
-mkdir -p "$HOOK_DIR"
-ln -sf "$OPENCLAW_DIR/hook-transform.js" "$HOOK_DIR/flashwatch.js"
-echo "✓ Installed hook → $HOOK_DIR/flashwatch.js"
-
-# Skill: agent reads this to understand how to run and operate FlashWatch
 mkdir -p "$SKILL_DIR"
 ln -sf "$OPENCLAW_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
 echo "✓ Installed skill → $SKILL_DIR/SKILL.md"
@@ -48,12 +42,13 @@ if [ ! -f "$RULES" ]; then
 fi
 
 # ── Check OpenClaw token ──────────────────────────────────────────────────────
-# OPENCLAW_HOOKS_TOKEN must match the token in your OpenClaw config (hooks.token).
-# Set it in your environment or pass it inline: OPENCLAW_HOOKS_TOKEN=... ./start.sh
+# FlashWatch POSTs alerts directly to OpenClaw's /hooks/agent endpoint.
+# This token must match the hooks.token in your OpenClaw config.
 if [ -z "$OPENCLAW_HOOKS_TOKEN" ]; then
   echo "ERROR: OPENCLAW_HOOKS_TOKEN is not set."
   echo ""
-  echo "Set it to the hooks token from your OpenClaw config (~/.openclaw/openclaw.json):"
+  echo "This must match the hooks.token in your OpenClaw config (~/.openclaw/openclaw.json)."
+  echo "Export it before running:"
   echo "  export OPENCLAW_HOOKS_TOKEN=your-token-here"
   echo "  ./start.sh"
   exit 1

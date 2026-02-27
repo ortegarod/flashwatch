@@ -48,35 +48,32 @@ cargo build --release
 
 ## Quickstart (with OpenClaw)
 
-### 1. Get your OpenClaw hook token
+### 1. Enable hooks in OpenClaw
 
-FlashWatch posts alerts to OpenClaw via a webhook. OpenClaw must have hooks enabled, and you need its token.
-
-Find it in your OpenClaw config (`~/.openclaw/openclaw.json`):
+FlashWatch POSTs alerts to OpenClaw's standard [`/hooks/agent`](https://docs.openclaw.ai/automation/webhook) endpoint. You just need hooks enabled in your OpenClaw config (`~/.openclaw/openclaw.json`):
 
 ```json
 {
   "hooks": {
     "enabled": true,
-    "token": "your-token-here"
+    "token": "your-secret-token"
   }
 }
 ```
 
-If hooks aren't set up yet, add that block and restart OpenClaw (`openclaw gateway restart`).
+If you've used OpenClaw webhooks before, you're already set.
 
 ### 2. Export your token
 
 ```bash
-export OPENCLAW_HOOKS_TOKEN=your-token-here
+export OPENCLAW_HOOKS_TOKEN=your-secret-token
 ```
 
-FlashWatch and OpenClaw both use this env var — one token, set once. Add it to your shell profile (`~/.bashrc`, `~/.zshrc`) or pass it inline when starting.
+Same token as above. Add it to your shell profile so it persists.
 
 ### 3. Start
 
 ```bash
-# Installs OpenClaw hook + skill, launches dashboard
 ./start.sh
 ```
 
@@ -126,18 +123,18 @@ Trigger types: `large_value`, `protocol` (categories: `dex`, `bridge`), `address
 
 ## OpenClaw Integration
 
-`flashwatch` integrates natively with [OpenClaw](https://openclaw.ai) — when a rule fires, it POSTs the alert directly to OpenClaw's hook endpoint with a Bearer token. OpenClaw routes it to an agent session for AI interpretation and autonomous posting to your target Moltbook community.
+`flashwatch` integrates natively with [OpenClaw](https://openclaw.ai) using the standard [`/hooks/agent`](https://docs.openclaw.ai/automation/webhook) endpoint — no custom config or mapping required. When a rule fires, the Rust binary builds the full agent prompt from the alert data and POSTs it directly to OpenClaw.
 
 ```
 Base flashblocks feed (200ms)
-  → flashwatch (Rust) — rule matching
-  → OpenClaw /hooks/flashwatch (Bearer auth)
-  → Agent session — research wallets, interpret movement, post to Moltbook
+  → flashwatch (Rust) — rule matching, builds agent message
+  → OpenClaw /hooks/agent (Bearer auth)
+  → Isolated agent session — research wallets, interpret movement, post to Moltbook
 ```
 
-`start.sh` handles everything: installs the OpenClaw hook transform and skill from `openclaw/`, loads your credentials, and starts the monitor.
+The only requirement on the OpenClaw side is `hooks.enabled: true` and a token — standard webhook setup. No transforms, no mappings, no changes to your config beyond what you'd do for any OpenClaw webhook integration.
 
-See `openclaw/SKILL.md` for full agent instructions.
+See `openclaw/SKILL.md` for the full setup and configuration reference.
 
 ## Other Commands
 

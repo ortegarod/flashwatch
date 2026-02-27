@@ -18,18 +18,36 @@ Real-time Base flashblock monitor. Watches pre-confirmation blocks (~200ms befor
 Base Flashblocks WebSocket (~200ms pre-confirmation)
         ↓
   flashwatch (Rust binary) — rule-based detection, zero AI cost
-        ↓ webhook POST with Bearer token on rule match
-  OpenClaw /hooks/flashwatch — runs hook-transform.js
+        ↓ POST /hooks/agent with full agent message + Bearer token
+  OpenClaw — fires an isolated agent turn
         ↓
-  Isolated agent session — executes whatever the transform instructs
+  Isolated agent session — researches wallets, posts to Moltbook
 ```
+
+FlashWatch uses OpenClaw's standard [`/hooks/agent`](https://docs.openclaw.ai/automation/webhook#post-hooksagent) endpoint. The Rust binary builds the full agent prompt from the alert data and POSTs it directly — no custom config, no transforms, no changes to your OpenClaw setup beyond having hooks enabled.
+
+---
+
+## Prerequisites
+
+- [OpenClaw](https://openclaw.ai) installed and running with hooks enabled:
+  ```json
+  {
+    "hooks": {
+      "enabled": true,
+      "token": "your-secret-token"
+    }
+  }
+  ```
+- `OPENCLAW_HOOKS_TOKEN` env var set to match that token
+- [Rust](https://rustup.rs/) 1.85+
 
 ---
 
 ## Build
 
 ```bash
-cd /path/to/flashwatch    # wherever you cloned the repo
+cd /path/to/flashwatch
 source ~/.cargo/env       # if installed via rustup
 cargo build --release
 # Binary: target/release/flashwatch
@@ -43,7 +61,7 @@ Only needed once, or after code changes.
 
 `start.sh` does three things every time you run it:
 1. Builds the binary if it doesn't exist yet
-2. Symlinks `openclaw/hook-transform.js` and `openclaw/SKILL.md` into your OpenClaw config
+2. Symlinks `openclaw/SKILL.md` into your OpenClaw workspace
 3. Starts `flashwatch serve` with your rules file and dashboard
 
 ```bash
@@ -55,25 +73,14 @@ Only needed once, or after code changes.
 ./start.sh --test
 ```
 
-**Requires** `OPENCLAW_HOOKS_TOKEN` — this is the shared secret that lets FlashWatch authenticate its webhook POSTs to OpenClaw. Both sides must use the same token.
+**Requires** `OPENCLAW_HOOKS_TOKEN` — this is the shared secret that authenticates FlashWatch's webhook POSTs to OpenClaw. It must match `hooks.token` in your OpenClaw config.
 
-Find or set it in your OpenClaw config (`~/.openclaw/openclaw.json`):
-```json
-{
-  "hooks": {
-    "enabled": true,
-    "token": "your-secret-token"
-  }
-}
-```
-If hooks aren't configured yet, add that block and run `openclaw gateway restart`.
-
-Then export the token before starting:
 ```bash
 export OPENCLAW_HOOKS_TOKEN=your-secret-token
 ./start.sh
 ```
-Or add it to your shell profile (`~/.bashrc`, `~/.zshrc`) so it persists across sessions.
+
+Add it to your shell profile (`~/.bashrc`, `~/.zshrc`) so it persists across sessions.
 
 **Override defaults:**
 ```bash
@@ -99,8 +106,6 @@ sudo systemctl stop flashwatch
 ---
 
 ## Keeping It Running (systemd)
-
-The process must stay alive to keep monitoring. Use systemd:
 
 ```bash
 sudo tee /etc/systemd/system/flashwatch.service > /dev/null <<EOF
@@ -138,24 +143,20 @@ journalctl -u flashwatch -f
 
 Rules live in a TOML file (copy `rules.example.toml` to get started). Each rule defines **what to watch for** and **where to send the alert** when it fires.
 
-### Structure
-
 ```toml
 [global]
-cooldown_secs = 120   # minimum seconds between any two alerts (prevents floods)
+cooldown_secs = 120   # minimum seconds between any two alerts
 max_per_minute = 5    # hard cap on alerts per minute across all rules
 
 [[rules]]
-name = "whale-transfer"                          # label shown in logs and alert payload
-webhook = "http://127.0.0.1:18789/hooks/flashwatch"  # where to POST when this rule fires
-cooldown_secs = 300                              # this rule specifically won't fire again for 5 min
+name = "whale-transfer"
+webhook = "http://127.0.0.1:18789/hooks/agent"   # OpenClaw /hooks/agent endpoint
+cooldown_secs = 300
 
 [rules.trigger]
-kind = "large_value"   # what to look for (see trigger types below)
-min_eth = 100.0        # only fire if transaction value is ≥ 100 ETH
+kind = "large_value"
+min_eth = 100.0
 ```
-
-Each `[[rules]]` block is one alert. You can define as many as you want. When a flash block contains a transaction matching the trigger, FlashWatch POSTs the alert to the `webhook` URL with a `Authorization: Bearer` header.
 
 ### Trigger types
 
@@ -168,111 +169,59 @@ Each `[[rules]]` block is one alert. You can define as many as you want. When a 
 
 ### Cooldowns
 
-Cooldowns prevent your agent from being spammed when the same wallet is active repeatedly. `global.cooldown_secs` applies across all rules; `rules.cooldown_secs` overrides it for a specific rule. During a hackathon or testing, lower these to 10–30 seconds. In production, 5 minutes per rule is reasonable.
+`global.cooldown_secs` applies across all rules; `rules.cooldown_secs` overrides it per rule.
 
 ---
 
 ## How the Alert Pipeline Works
 
-When a rule fires, FlashWatch POSTs raw JSON to OpenClaw's mapped hook endpoint (`/hooks/flashwatch`). OpenClaw runs `openclaw/hook-transform.js` on that payload. The transform returns a `message`, which OpenClaw uses to fire an **isolated agent turn** — the same mechanism as `/hooks/agent`. That isolated agent turn receives the message and executes it. Your main session is never involved.
-
-**The transform defines what the isolated agent turn is told to do.** To change what happens on every alert, edit the transform — no FlashWatch restart needed.
-
-### Alert payload structure
-
-This is what OpenClaw receives from FlashWatch and passes to the transform:
+When a rule fires, FlashWatch builds a full agent message in Rust (`src/alert.rs → build_agent_message`) and POSTs it to OpenClaw's `/hooks/agent` endpoint:
 
 ```json
 {
-  "rule_name": "whale-transfer",   // which rule fired
-  "block_number": 42682748,        // Base block number
-  "flashblock_index": 2,           // position within the flash block
-  "tx": {
-    "hash": "0xabc...",            // transaction hash
-    "from": "0x1234...",           // sending address
-    "to": "0x5678...",             // receiving address
-    "to_label": "Bybit Hot Wallet 6",  // known label, or null if unknown
-    "value_eth": 505.01,           // ETH value
-    "category": "unknown"          // "dex", "bridge", "transfer", or "unknown"
-  }
+  "message": "...(full agent prompt with wallet addresses, tx link, instructions)...",
+  "name": "FlashWatch",
+  "wakeMode": "now",
+  "deliver": false
 }
 ```
 
-Useful when writing or debugging a custom transform.
-
----
-
-## OpenClaw Config (required)
-
-Add this mapping to your `~/.openclaw/openclaw.json` under `hooks.mappings`. This is what connects FlashWatch's webhook to the transform and the isolated agent turn:
-
-```json
-{
-  "hooks": {
-    "enabled": true,
-    "token": "your-secret-token",
-    "transformsDir": "~/.openclaw/hooks/transforms",
-    "mappings": [
-      {
-        "id": "flashwatch",
-        "match": { "path": "flashwatch" },
-        "action": "agent",
-        "wakeMode": "now",
-        "name": "FlashWatch",
-        "deliver": false,
-        "allowUnsafeExternalContent": true,
-        "transform": { "module": "flashwatch.js" }
-      }
-    ]
-  }
-}
-```
-
-`start.sh` does **not** modify your OpenClaw config — you must add this block manually, then run `openclaw gateway restart`.
-
-**What each field does:**
-- `match.path` — OpenClaw listens for POSTs at `/hooks/flashwatch`
-- `action: "agent"` — fires an isolated agent turn (your main session is untouched)
-- `transform.module` — runs `flashwatch.js` from `transformsDir` to build the agent message
-- `deliver: false` — the isolated agent turn's response is not forwarded to your chat
-- `allowUnsafeExternalContent: true` — allows the raw blockchain payload through without safety wrapping
+OpenClaw fires an **isolated agent turn** — it receives that message as its prompt, runs with full access to tools (web_fetch, exec, etc.), and acts autonomously. Your main session is never involved.
 
 ---
 
 ## Customizing What Happens on Alert
 
-When a rule fires, FlashWatch POSTs to OpenClaw, which runs `openclaw/hook-transform.js` as an **isolated agent session**. That file is the integration layer — it receives the alert payload, builds your instructions, and your session executes them.
+The agent prompt is built by `build_agent_message()` in `src/alert.rs`. By default it tells the agent to:
+1. Research unknown wallets via Basescan
+2. Interpret the on-chain movement
+3. Post an AI-interpreted alert to Moltbook
 
-**This is where you define what your agent does with every alert.** The default `hook-transform.js` is an example that posts whale alerts to Moltbook. You can change it to do anything: send a Telegram message, write to a database, call a trading API, trigger another workflow.
+To change the behavior, edit `build_agent_message()` in `src/alert.rs` and rebuild:
+```bash
+cargo build --release
+```
 
-To customize:
-1. Edit `openclaw/hook-transform.js` — change the instructions in the `message` block
-2. `start.sh` will symlink your updated file into OpenClaw on next run (or just edit it in place at `~/.openclaw/hooks/transforms/flashwatch.js`)
-3. Changes take effect immediately — no restart needed
-
-The hook runs as an isolated session, so it has full access to your OpenClaw tools and skills but doesn't interrupt your main session.
+Set `FLASHWATCH_MOLTBOOK_SUBMOLT` to target a different Moltbook community (default: `basewhales`).
 
 ---
 
 ## Other Commands
 
 ```bash
-# Live stream all flashblocks
-./target/release/flashwatch stream
-
-# Terminal dashboard
-./target/release/flashwatch monitor
-
-# Track a tx to finality
-./target/release/flashwatch track 0xabc123...
+./target/release/flashwatch stream      # live stream all flashblocks
+./target/release/flashwatch monitor     # terminal dashboard
+./target/release/flashwatch track 0x…  # track a tx to finality
 ```
 
 ---
 
 ## Troubleshooting
 
-**No alerts firing:** Switch to `--test` mode first. Production rules (≥100 ETH) may take minutes to hours to fire.
+**No alerts firing:** Use `--test` mode first. Production rules (≥100 ETH) may take minutes to hours to fire.
 
-**Webhook 401:** The `OPENCLAW_HOOKS_TOKEN` env var must match `hooks.token` in your OpenClaw config. Check both match and that OpenClaw has `hooks.enabled: true`.
+**Webhook 401:** `OPENCLAW_HOOKS_TOKEN` must match `hooks.token` in your OpenClaw config. Check both.
 
-**Process died:** Check `/tmp/flashwatch.log` or `journalctl -u flashwatch`. The binary auto-reconnects on WebSocket drops — if it exits entirely, systemd will restart it.
+**Webhook 404:** OpenClaw must have `hooks.enabled: true` in its config.
+
+**Process died:** Check `journalctl -u flashwatch`. The binary auto-reconnects on WebSocket drops.
