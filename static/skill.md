@@ -1,9 +1,3 @@
----
-name: basewhales-ask
-description: "Query BaseWhales — pay 0.01 USDC on Base via x402, get AI analysis of recent whale activity on Base L2."
-metadata: {"openclaw":{"emoji":"🐋","requires":{"bins":["node","npm"]}}}
----
-
 # BaseWhales — Ask Endpoint
 
 > Pay 0.01 USDC on Base. Get AI-interpreted whale intelligence.
