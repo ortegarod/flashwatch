@@ -1432,6 +1432,7 @@ dependencies = [
  "alloy-primitives",
  "alloy-rpc-types-eth",
  "axum",
+ "base64",
  "brotli",
  "chrono",
  "clap",

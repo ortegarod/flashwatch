@@ -27,6 +27,7 @@ pub struct X402Config {
     pub price: String,
     pub resource_url: String,
     pub openclaw_port: u16,
+    pub token_name: String,   // EIP-712 domain name (e.g. "USDC" on Sepolia, "USD Coin" on mainnet)
 }
 
 impl X402Config {
@@ -42,6 +43,8 @@ impl X402Config {
                 .unwrap_or_else(|_| "base".to_string()),
             asset: std::env::var("X402_ASSET")
                 .unwrap_or_else(|_| "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913".to_string()),
+            token_name: std::env::var("X402_TOKEN_NAME")
+                .unwrap_or_else(|_| "USD Coin".to_string()),
             pay_to,
             price: std::env::var("X402_PRICE")
                 .unwrap_or_else(|_| "10000".to_string()),
@@ -89,7 +92,7 @@ pub async fn ask_handler(
         }
         Some(payment) => {
             // 2. Verify payment with facilitator
-            match verify_payment(&client, &state.x402.facilitator_url, &payment).await {
+            match verify_payment(&client, &state.x402.facilitator_url, &payment, &state.x402).await {
                 Ok(true) => {
                     // 3. Forward to OpenClaw
                     match query_openclaw(&client, &state, &req.question).await {
@@ -131,7 +134,7 @@ fn payment_required_response(x402: &X402Config) -> axum::response::Response {
             "payTo": x402.pay_to,
             "maxTimeoutSeconds": 300,
             "asset": x402.asset,
-            "extra": { "name": "USD Coin", "version": "2" }
+            "extra": { "name": x402.token_name, "version": "2" }
         }],
         "error": "Payment required"
     });
@@ -145,16 +148,56 @@ fn format_price(raw: &str) -> String {
         .unwrap_or_else(|_| raw.to_string())
 }
 
-/// Verify payment with the x402 facilitator. Returns true if valid.
-async fn verify_payment(client: &reqwest::Client, facilitator_url: &str, payment: &str) -> eyre::Result<bool> {
+/// Verify payment with the x402 facilitator.
+/// The X-Payment header is base64-encoded JSON (the payment payload).
+/// The facilitator expects: { x402Version, paymentPayload, paymentRequirements }
+async fn verify_payment(
+    client: &reqwest::Client,
+    facilitator_url: &str,
+    x_payment: &str,
+    x402: &X402Config,
+) -> eyre::Result<bool> {
+    // Decode base64 → JSON payment payload
+    use base64::{Engine as _, engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD}};
+    let decoded = STANDARD.decode(x_payment)
+        .or_else(|_| URL_SAFE_NO_PAD.decode(x_payment))?;
+    let payment_payload: serde_json::Value = serde_json::from_slice(&decoded)?;
+
+    // Build the payment requirements (mirror of our 402 response)
+    let payment_requirements = serde_json::json!({
+        "scheme": "exact",
+        "network": x402.network,
+        "maxAmountRequired": x402.price,
+        "resource": x402.resource_url,
+        "description": format!("BaseWhales AI query — {} USDC on {}", format_price(&x402.price), x402.network),
+        "mimeType": "application/json",
+        "payTo": x402.pay_to,
+        "maxTimeoutSeconds": 300,
+        "asset": x402.asset,
+        "extra": { "name": x402.token_name, "version": "2" }
+    });
+
+    let body = serde_json::json!({
+        "x402Version": 1,
+        "paymentPayload": payment_payload,
+        "paymentRequirements": payment_requirements,
+    });
+
     let resp = client
         .post(format!("{facilitator_url}/verify"))
         .header("content-type", "application/json")
-        .body(payment.to_string())
+        .json(&body)
         .send()
         .await?;
 
-    Ok(resp.status().is_success())
+    if !resp.status().is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        tracing::warn!("Facilitator verify failed: {}", text);
+        return Ok(false);
+    }
+
+    let result: serde_json::Value = resp.json().await?;
+    Ok(result.get("isValid").and_then(|v| v.as_bool()).unwrap_or(false))
 }
 
 /// Build a rich context message for the agent.

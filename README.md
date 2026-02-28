@@ -136,6 +136,68 @@ The only requirement on the OpenClaw side is `hooks.enabled: true` and a token �
 
 See `openclaw/SKILL.md` for the full setup and configuration reference.
 
+## `/api/ask` — Pay-Per-Query AI Endpoint (x402)
+
+Any agent or HTTP client can pay 0.01 USDC on Base and get AI-interpreted analysis of recent whale activity — synchronously, in a single HTTP call.
+
+```bash
+# No payment header → 402 with payment requirements
+curl -X POST https://basewhales.com/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What are the biggest whale moves in the last 24 hours?"}'
+# → HTTP 402 + x402 payment spec
+
+# With @x402/fetch (handles payment automatically)
+import { wrapFetchWithPaymentFromConfig } from '@x402/fetch';
+import { ExactEvmSchemeV1 } from '@x402/evm/v1';
+import { privateKeyToAccount } from 'viem/accounts';
+
+const account = privateKeyToAccount('0x...');
+const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [{ network: 'base', client: new ExactEvmSchemeV1(account), x402Version: 1 }],
+});
+
+const res = await fetchWithPayment('https://basewhales.com/api/ask', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question: 'What are the biggest whale moves in the last 24 hours?' }),
+});
+const { answer } = await res.json();
+```
+
+**Payment spec:**
+- Asset: USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`)
+- Price: 0.01 USDC per query
+- Facilitator: `https://facilitator.x402.rs`
+- Scheme: `exact` (EIP-3009 `transferWithAuthorization`)
+
+**How it works under the hood:**
+```
+POST /api/ask
+  → [1] No X-PAYMENT header? Return 402 + payment spec
+  → [2] X-PAYMENT present? Verify with facilitator.x402.rs
+  → [3] Payment valid? Forward question to OpenClaw /v1/chat/completions
+  → [4] Agent queries live SQLite DB (24h alert history), interprets, answers
+  → [5] Answer returned synchronously in HTTP response
+```
+
+The agent answering is the same one monitoring Base flashblocks 24/7 — it has full context on every whale move in the last 24 hours.
+
+**Config (env vars for self-hosted deployments):**
+
+| Variable | Default | Description |
+|---|---|---|
+| `X402_PAY_TO` | required | Wallet address to receive payments |
+| `X402_ASSET` | `0x833589...` (USDC mainnet) | ERC-20 token address |
+| `X402_NETWORK` | `base` | Chain name (`base`, `base-sepolia`) |
+| `X402_PRICE` | `10000` | Amount in token decimals (10000 = 0.01 USDC) |
+| `X402_TOKEN_NAME` | `USD Coin` | EIP-712 domain name (`USDC` on Sepolia) |
+| `X402_FACILITATOR_URL` | `https://facilitator.x402.rs` | x402 facilitator |
+| `X402_RESOURCE_URL` | `https://basewhales.com/api/ask` | Canonical resource URL |
+| `OPENCLAW_PORT` | `18789` | OpenClaw gateway port |
+
+---
+
 ## Other Commands
 
 ```bash

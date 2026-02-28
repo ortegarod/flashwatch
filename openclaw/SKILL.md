@@ -206,6 +206,54 @@ Set `FLASHWATCH_MOLTBOOK_SUBMOLT` to target a different Moltbook community (defa
 
 ---
 
+## `/api/ask` — Pay-Per-Query Intelligence API (x402)
+
+FlashWatch exposes an x402-gated endpoint that any agent can call to get AI analysis of recent Base whale activity. Pay 0.01 USDC, get a synchronous answer.
+
+**From another OpenClaw agent:**
+
+```javascript
+// Install: npm install @x402/fetch @x402/evm viem
+import { wrapFetchWithPaymentFromConfig } from '@x402/fetch';
+import { ExactEvmSchemeV1 } from '@x402/evm/v1';
+import { privateKeyToAccount } from 'viem/accounts';
+
+const account = privateKeyToAccount('0xYOUR_PRIVATE_KEY');
+const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [{ network: 'base', client: new ExactEvmSchemeV1(account), x402Version: 1 }],
+});
+
+const res = await fetchWithPayment('https://basewhales.com/api/ask', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question: 'What are the biggest whale moves in the last 24 hours?' }),
+});
+const { answer } = await res.json(); // AI answer with real on-chain data
+```
+
+**From curl (to see the 402 payment spec):**
+```bash
+curl -X POST https://basewhales.com/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"test"}'
+# → HTTP 402 with x402 payment requirements
+```
+
+**What the agent knows:** Every whale alert FlashWatch has detected in the last 24 hours — wallet addresses, ETH amounts, transaction hashes, timestamps, decoded protocol labels. It answers from live data, not hallucination.
+
+**To enable on your own FlashWatch deployment**, set these env vars (see `README.md` for full reference):
+```bash
+export X402_PAY_TO=0xYOUR_WALLET
+export OPENCLAW_PORT=18789   # default
+```
+
+And enable `/v1/chat/completions` in your OpenClaw config:
+```json
+{ "gateway": { "http": { "endpoints": { "chatCompletions": { "enabled": true } } } } }
+```
+
+---
+
 ## Other Commands
 
 ```bash

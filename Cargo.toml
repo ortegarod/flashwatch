@@ -57,6 +57,7 @@ brotli = "7"
 
 # Error handling
 eyre = "0.6"
+base64 = "0.22"
 
 # Config
 toml = "0.8"
