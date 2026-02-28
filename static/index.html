@@ -810,7 +810,7 @@ async function fetchActivity(){
       return;
     }
     el.innerHTML=data.queries.map(q=>{
-      const time=q.created_at?new Date(q.created_at+'Z').toLocaleString():'—';
+      const time=q.created_at?new Date(q.created_at.endsWith('Z')?q.created_at:q.created_at+'Z').toLocaleString():'—';
       const payer=q.payer?q.payer.slice(0,6)+'...'+q.payer.slice(-4):'anonymous';
       const network=q.network||'base';
       const answerPreview=q.answer?(q.answer.length>200?q.answer.slice(0,200)+'...':q.answer):'(no answer)';
