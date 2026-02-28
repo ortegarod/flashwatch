@@ -13,7 +13,7 @@ use axum::{
         Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
     },
-    routing::get,
+    routing::{get, post},
 };
 use tower_http::services::ServeDir;
 use futures_util::{SinkExt, StreamExt};
@@ -21,18 +21,21 @@ use tokio::sync::broadcast;
 use tokio_tungstenite::tungstenite::Message as TungMessage;
 use tracing::info;
 
+use crate::ask::{ask_handler, X402Config};
 use crate::rules::RuleEngine;
 use crate::store::{AlertQuery, AlertStore};
 
-struct AppState {
+pub struct AppState {
     tx: broadcast::Sender<String>,
-    store: Option<AlertStore>,
+    pub store: Option<AlertStore>,
     health: tokio::sync::RwLock<HealthInfo>,
-    rules_config: Option<crate::rules::RulesConfig>,
+    pub rules_config: Option<crate::rules::RulesConfig>,
     rpc_url: String,
     moltbook_api_key: Option<String>,
     moltbook_submolt: String,
     feed_cache: tokio::sync::RwLock<Option<(std::time::Instant, serde_json::Value)>>,
+    pub openclaw_gateway_token: Option<String>,
+    pub x402: X402Config,
 }
 
 #[derive(Default, Clone, serde::Serialize)]
@@ -100,6 +103,26 @@ pub async fn run(
     let moltbook_submolt = std::env::var("FLASHWATCH_MOLTBOOK_SUBMOLT")
         .unwrap_or_else(|_| "basewhales".to_string());
 
+    // Read OpenClaw gateway token — env var takes precedence, then openclaw.json
+    let openclaw_gateway_token = std::env::var("OPENCLAW_GATEWAY_TOKEN").ok().or_else(|| {
+        let config_path = dirs::home_dir()?.join(".openclaw/openclaw.json");
+        let contents = std::fs::read_to_string(&config_path).ok()?;
+        let v: serde_json::Value = serde_json::from_str(&contents).ok()?;
+        v.get("gateway")?.get("auth")?.get("token")?.as_str().map(|s| s.to_string())
+    });
+    if openclaw_gateway_token.is_some() {
+        info!("/api/ask: OpenClaw gateway token loaded — endpoint ready");
+    } else {
+        info!("/api/ask: WARNING — no OpenClaw gateway token found; /api/ask will return 503");
+    }
+
+    // Load x402 config from env vars
+    let x402 = X402Config::from_env();
+    info!(
+        "/api/ask: x402 config — network={} price={} pay_to={} facilitator={}",
+        x402.network, x402.price, x402.pay_to, x402.facilitator_url
+    );
+
     let state = Arc::new(AppState {
         tx: tx.clone(),
         store,
@@ -112,6 +135,8 @@ pub async fn run(
         moltbook_api_key,
         moltbook_submolt,
         feed_cache: tokio::sync::RwLock::new(None),
+        openclaw_gateway_token,
+        x402,
     });
 
     // HTTP client for webhook firing
@@ -191,7 +216,8 @@ pub async fn run(
         .route("/api/rules", get(rules_handler))
         .route("/api/track/{tx_hash}", get(track_handler))
         .route("/api/info", get(info_handler))
-        .route("/api/feed", get(feed_handler));
+        .route("/api/feed", get(feed_handler))
+        .route("/api/ask", post(ask_handler));
 
     let app = if let Some(ref dir) = static_path {
         info!("Serving frontend from {}", dir.display());
