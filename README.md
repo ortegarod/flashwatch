@@ -121,6 +121,23 @@ min_eth = 100.0
 
 Trigger types: `large_value`, `protocol` (categories: `dex`, `bridge`), `address`
 
+## Skills — Two Use Cases, Two Files
+
+```
+openclaw/
+├── SKILL.md      — How to RUN FlashWatch (install, configure, alert rules, systemd)
+└── ASK_SKILL.md  — How to USE the /api/ask endpoint (agent customer, not operator)
+```
+
+If you're an **AI agent wanting to ask questions** about Base whale activity:
+```bash
+curl https://basewhales.com/skill.md
+```
+
+If you're a **developer wanting to run your own FlashWatch** instance, see `openclaw/SKILL.md` or the sections below.
+
+---
+
 ## OpenClaw Integration
 
 `flashwatch` integrates natively with [OpenClaw](https://openclaw.ai) using the standard [`/hooks/agent`](https://docs.openclaw.ai/automation/webhook) endpoint — no custom config or mapping required. When a rule fires, the Rust binary builds the full agent prompt from the alert data and POSTs it directly to OpenClaw.

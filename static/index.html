@@ -167,6 +167,42 @@
   <div class="status err" id="status">Connecting...</div>
 </div>
 
+<!-- HERO — always visible, above tabs -->
+<div style="background:linear-gradient(180deg,#0d1117 0%,#111 100%);border-bottom:1px solid #1a1a1a;padding:28px 32px 24px">
+  <div style="max-width:900px;margin:0 auto;display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- Left: pitch -->
+    <div style="flex:1;min-width:260px">
+      <div style="font-size:13px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">BaseWhales Intelligence API</div>
+      <h2 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 8px;line-height:1.3">Ask anything about Base L2 whale activity.<br><span style="color:var(--fg2);font-weight:400;font-size:16px">Real-time answers from an AI agent watching every flashblock.</span></h2>
+      <p style="font-size:13px;color:var(--fg3);margin:0 0 14px;line-height:1.6">Powered by <strong style="color:var(--yellow)">Kyro</strong> — an autonomous agent running 24/7, monitoring Base pre-confirmation blocks and building a live intelligence database of every significant whale move.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="/skill.md" target="_blank" style="display:inline-block;background:var(--yellow);color:#000;font-size:12px;font-weight:700;padding:7px 16px;border-radius:6px;text-decoration:none">curl /skill.md — Agent Docs</a>
+        <a href="https://moltbook.com/m/basewhales" target="_blank" style="display:inline-block;background:var(--bg2);color:var(--fg);font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;text-decoration:none;border:1px solid #333">Live Alerts →</a>
+      </div>
+    </div>
+
+    <!-- Right: quick API box -->
+    <div style="flex:0 0 auto;min-width:280px;max-width:360px;background:#111;border:1px solid #222;border-radius:10px;padding:16px">
+      <div style="font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Quick Start</div>
+      <pre style="margin:0 0 10px;font-size:11px;color:#a3e635;line-height:1.6;overflow-x:auto">POST https://basewhales.com/api/ask
+X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
+
+{ "question": "Biggest whale moves today?" }</pre>
+      <div style="font-size:11px;color:var(--fg3);margin-bottom:8px">→ Returns AI answer + on-chain payment TX</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="ask-quick-input" type="text" placeholder="Ask a question..." value="What are the biggest whale moves today?"
+          style="flex:1;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:5px;padding:6px 10px;color:#fff;font-family:var(--font);font-size:11px;outline:none;min-width:0"/>
+        <button onclick="runQuickAsk()" id="ask-quick-btn"
+          style="background:var(--yellow);color:#000;border:none;border-radius:5px;padding:6px 12px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">Try</button>
+      </div>
+      <div id="ask-quick-result" style="display:none;margin-top:10px;font-size:11px;color:var(--fg3);background:#0d0d0d;border-radius:5px;padding:10px;max-height:120px;overflow-y:auto;line-height:1.5"></div>
+      <div id="ask-quick-tx" style="display:none;margin-top:6px;font-size:10px;color:var(--fg3)"></div>
+    </div>
+
+  </div>
+</div>
+
 <!-- METRICS -->
 <div class="metrics">
   <div class="mc"><div class="label">Block</div><div class="val" style="color:var(--blue)" id="m-block">—</div><div class="sub" id="m-block-sub">waiting</div></div>
@@ -748,7 +784,36 @@ setInterval(updateUI,1000);
 setInterval(pollHealth,5000);
 pollHealth();
 
-// ===== ASK AI DEMO =====
+// ===== ASK AI (hero quick demo) =====
+async function runQuickAsk(){
+  const btn=document.getElementById('ask-quick-btn');
+  const input=document.getElementById('ask-quick-input');
+  const result=document.getElementById('ask-quick-result');
+  const txEl=document.getElementById('ask-quick-tx');
+  const question=input.value.trim()||'What are the biggest whale moves today?';
+
+  btn.disabled=true; btn.textContent='...';
+  result.style.display='block'; txEl.style.display='none';
+  result.style.color='var(--fg3)'; result.textContent='Calling BaseWhales API...';
+
+  try{
+    const res=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question})});
+    if(res.status===402){
+      result.style.color='var(--yellow)';
+      result.textContent='Payment required: 0.01 USDC on Base (x402)\n\nThis demo shows the endpoint is live.\nAI agents with a USDC wallet get the full answer automatically.\n\n→ See sample answer in the "Ask AI" tab below ↓';
+    } else if(res.ok){
+      const body=await res.json();
+      result.style.color='var(--fg2)'; result.textContent=body.answer||JSON.stringify(body,null,2);
+      if(body.payment_tx){
+        txEl.style.display='block';
+        txEl.innerHTML=`💳 <a href="${body.payment_explorer||'#'}" target="_blank" style="color:var(--blue)">${body.payment_tx.slice(0,20)}... (Basescan)</a>`;
+      }
+    } else { result.style.color='var(--red,#f87171)'; result.textContent='Error: '+res.status; }
+  } catch(e){ result.style.color='var(--red,#f87171)'; result.textContent=e.message; }
+  btn.disabled=false; btn.textContent='Try';
+}
+
+// ===== ASK AI DEMO (full tab) =====
 async function runAskDemo(){
   const btn=document.getElementById('ask-btn');
   const input=document.getElementById('ask-input');
