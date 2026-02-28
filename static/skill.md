@@ -4,54 +4,17 @@
 
 ## What This Is
 
-BaseWhales is an AI agent (Kyro) that monitors Base L2 flashblocks 24/7 and builds a live database of every significant whale movement. You can query that intelligence for 0.01 USDC per question.
+BaseWhales is an AI agent (Kyro) that monitors Base L2 flashblocks 24/7 and builds a live database of every significant whale movement. You can query that intelligence for 0.01 USDC per question via x402.
 
-## Quickest Way (one command)
+## How to Query
+
+Install dependencies:
 
 ```bash
-curl -sL basewhales.com/ask.sh | bash -s -- "Your question" /path/to/wallet-key
+npm install @x402/fetch @x402/evm viem
 ```
 
-That's it. Auto-installs deps on first run, cached after that. Requires Node.js and a wallet private key file.
-
-**OpenClaw agents:**
-```bash
-curl -sL basewhales.com/ask.sh | bash -s -- "What are the biggest whale moves today?" ~/.openclaw/credentials/.wallet-key
-```
-
-## Endpoint (for programmatic use)
-
-```
-POST https://basewhales.com/api/ask
-Content-Type: application/json
-X-PAYMENT: <x402 payment header>
-
-{ "question": "Your question about Base whale activity" }
-```
-
-## Payment (x402 — exact scheme)
-
-| Field | Value |
-|---|---|
-| Asset | USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
-| Price | 0.01 USDC per query |
-| Network | `base` |
-| Scheme | `exact` (EIP-3009 `transferWithAuthorization`) |
-| Facilitator | `https://facilitator.x402.rs` |
-
-No X-PAYMENT header → HTTP 402 with full payment spec.
-
-## Response (HTTP 200)
-
-```json
-{
-  "answer": "AI-interpreted analysis of recent Base whale activity...",
-  "payment_tx": "0x...",
-  "payment_explorer": "https://basescan.org/tx/0x..."
-}
-```
-
-## Example — Node.js (if you want more control)
+Then make the request — x402 handles the payment automatically:
 
 ```javascript
 import { wrapFetchWithPaymentFromConfig } from '@x402/fetch';
@@ -68,7 +31,42 @@ const res = await fetchWithPayment('https://basewhales.com/api/ask', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ question: 'What are the biggest whale moves in the last 24 hours?' }),
 });
-const { answer, payment_tx } = await res.json();
+const { answer, payment_tx, payment_explorer } = await res.json();
+console.log(answer);
+// payment_tx is the on-chain Basescan link proving the payment settled
+```
+
+That's it. The fetch wrapper catches the 402, signs the payment, and retries — no manual header construction needed.
+
+## Endpoint
+
+```
+POST https://basewhales.com/api/ask
+Content-Type: application/json
+
+{ "question": "Your question about Base whale activity" }
+```
+
+No payment header → HTTP 402 with full payment spec returned automatically.
+
+## Payment Details (x402 — exact scheme)
+
+| Field | Value |
+|---|---|
+| Asset | USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
+| Price | 0.01 USDC per query |
+| Network | `base` |
+| Scheme | `exact` (EIP-3009 `transferWithAuthorization`) |
+| Facilitator | `https://facilitator.x402.rs` |
+
+## Response (HTTP 200)
+
+```json
+{
+  "answer": "AI-interpreted analysis of recent Base whale activity...",
+  "payment_tx": "0x...",
+  "payment_explorer": "https://basescan.org/tx/0x..."
+}
 ```
 
 ## What Kyro Knows
