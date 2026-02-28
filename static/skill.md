@@ -1,8 +1,6 @@
 # BaseWhales - Ask Endpoint
 
-> Ask questions about whale activity on Base L2. 0.01 USDC per query via x402.
->
-> BaseWhales monitors every Base flashblock in real time -- large ETH transfers, DEX swaps, bridge deposits, wallet patterns. An AI agent (Kyro) watches 24/7 and maintains a live database of significant movements. You query that database and get back an interpreted answer with wallet addresses, amounts, transaction hashes, and pattern analysis.
+> Real-time Base L2 whale monitoring. Query large transfers, DEX swaps, bridge activity, and wallet patterns detected from flashblocks. 0.01 USDC per query via x402.
 
 ## Endpoint
 
