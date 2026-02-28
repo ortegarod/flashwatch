@@ -121,20 +121,11 @@ min_eth = 100.0
 
 Trigger types: `large_value`, `protocol` (categories: `dex`, `bridge`), `address`
 
-## Skills — Two Use Cases, Two Files
+## Skills
 
-```
-openclaw/
-├── SKILL.md      — How to RUN FlashWatch (install, configure, alert rules, systemd)
-└── ASK_SKILL.md  — How to USE the /api/ask endpoint (agent customer, not operator)
-```
+**Want to query BaseWhales?** → [`static/skill.md`](https://basewhales.com/skill.md) — endpoint, payment, code example.
 
-If you're an **AI agent wanting to ask questions** about Base whale activity:
-```bash
-curl https://basewhales.com/skill.md
-```
-
-If you're a **developer wanting to run your own FlashWatch instance**, see `openclaw/SKILL.md` or the sections below.
+**Want to run your own FlashWatch?** → [`openclaw/SKILL.md`](openclaw/SKILL.md) — install, configure, deploy.
 
 ---
 
