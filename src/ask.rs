@@ -105,7 +105,8 @@ pub async fn ask_handler(
                     match query_openclaw(&client, &state, &req.question).await {
                         Ok(answer) => {
                             let mut resp = serde_json::json!({ "answer": answer });
-                            if let Some(hash) = tx_hash {
+                            let tx_str = tx_hash.as_ref().map(|s| s.as_str());
+                            if let Some(hash) = &tx_hash {
                                 resp["payment_tx"] = serde_json::json!(hash);
                                 let explorer = if state.x402.network.contains("sepolia") {
                                     format!("https://sepolia.basescan.org/tx/{}", hash)
@@ -114,6 +115,16 @@ pub async fn ask_handler(
                                 };
                                 resp["payment_explorer"] = serde_json::json!(explorer);
                             }
+
+                            // Store query in SQLite for activity tab
+                            if let Some(ref store) = state.store {
+                                if let Err(e) = store.insert_query(
+                                    &req.question, Some(&answer), tx_str, None, Some(&state.x402.network),
+                                ) {
+                                    tracing::warn!("Failed to store query: {e}");
+                                }
+                            }
+
                             (StatusCode::OK, Json(resp)).into_response()
                         },
                         Err(e) => (

@@ -38,6 +38,17 @@ impl AlertStore {
             CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(timestamp);
             CREATE INDEX IF NOT EXISTS idx_alerts_category ON alerts(category);
             CREATE INDEX IF NOT EXISTS idx_alerts_block ON alerts(block_number);
+
+            CREATE TABLE IF NOT EXISTS queries (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                question    TEXT NOT NULL,
+                answer      TEXT,
+                payment_tx  TEXT,
+                payer       TEXT,
+                network     TEXT,
+                created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_queries_created ON queries(created_at);
         ")?;
 
         Ok(Self { conn: Mutex::new(conn) })
@@ -173,6 +184,36 @@ impl AlertStore {
             let _ = conn.execute_batch("PRAGMA incremental_vacuum;");
         }
         Ok(deleted)
+    }
+
+    /// Insert a query record (from /api/ask).
+    pub fn insert_query(&self, question: &str, answer: Option<&str>, payment_tx: Option<&str>, payer: Option<&str>, network: Option<&str>) -> eyre::Result<()> {
+        let conn = self.conn.lock().map_err(|e| eyre::eyre!("DB lock poisoned: {e}"))?;
+        conn.execute(
+            "INSERT INTO queries (question, answer, payment_tx, payer, network) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![question, answer, payment_tx, payer, network],
+        )?;
+        Ok(())
+    }
+
+    /// Get recent queries (newest first).
+    pub fn recent_queries(&self, limit: usize) -> eyre::Result<Vec<serde_json::Value>> {
+        let conn = self.conn.lock().map_err(|e| eyre::eyre!("DB lock poisoned: {e}"))?;
+        let mut stmt = conn.prepare(
+            "SELECT id, question, answer, payment_tx, payer, network, created_at FROM queries ORDER BY id DESC LIMIT ?1"
+        )?;
+        let rows = stmt.query_map(params![limit as i64], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, i64>(0)?,
+                "question": row.get::<_, String>(1).unwrap_or_default(),
+                "answer": row.get::<_, Option<String>>(2).unwrap_or(None),
+                "payment_tx": row.get::<_, Option<String>>(3).unwrap_or(None),
+                "payer": row.get::<_, Option<String>>(4).unwrap_or(None),
+                "network": row.get::<_, Option<String>>(5).unwrap_or(None),
+                "created_at": row.get::<_, String>(6).unwrap_or_default(),
+            }))
+        })?.collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
     }
 }
 

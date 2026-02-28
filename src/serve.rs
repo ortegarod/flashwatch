@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use axum::{
     Json, Router,
+    response::IntoResponse,
     extract::{
         Query, State, WebSocketUpgrade,
         ws::{Message, WebSocket},
@@ -217,7 +218,8 @@ pub async fn run(
         .route("/api/track/{tx_hash}", get(track_handler))
         .route("/api/info", get(info_handler))
         .route("/api/feed", get(feed_handler))
-        .route("/api/ask", post(ask_handler));
+        .route("/api/ask", post(ask_handler))
+        .route("/api/ask-history", get(ask_history_handler));
 
     let app = if let Some(ref dir) = static_path {
         info!("Serving frontend from {}", dir.display());
@@ -259,6 +261,21 @@ async fn stats_handler(
     match store.stats() {
         Ok(stats) => Json(stats),
         Err(e) => Json(serde_json::json!({"error": e.to_string()})),
+    }
+}
+
+async fn ask_history_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    match &state.store {
+        Some(store) => match store.recent_queries(50) {
+            Ok(queries) => Json(serde_json::json!({ "queries": queries })).into_response(),
+            Err(e) => (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": format!("{e}") })),
+            ).into_response(),
+        },
+        None => Json(serde_json::json!({ "queries": [] })).into_response(),
     }
 }
 

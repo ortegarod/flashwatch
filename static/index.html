@@ -220,6 +220,7 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
   <button class="tab" data-tab="analytics">Analytics</button>
   <button class="tab" data-tab="track">Track TX</button>
   <button class="tab" data-tab="feed">Moltbook Feed</button>
+  <button class="tab" data-tab="activity">💳 Activity</button>
   <button class="tab" data-tab="ask">🤖 Ask AI</button>
 </div>
 
@@ -319,6 +320,19 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
   </div>
   <div style="padding:12px 32px">
     <div class="panel-body" id="feed-list" style="max-height:calc(100vh - 260px);overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- TAB: ACTIVITY -->
+<div class="tab-content" id="tab-activity">
+  <div style="padding:12px 32px 0;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em">Recent /api/ask Queries — Paid via x402</span>
+    <button onclick="fetchActivity()" style="font-family:var(--font);font-size:11px;padding:5px 12px;background:var(--bg2);color:var(--fg2);border:1px solid var(--bg2);border-radius:6px;cursor:pointer">↻ Refresh</button>
+  </div>
+  <div style="padding:12px 32px">
+    <div id="activity-list" style="max-height:calc(100vh - 260px);overflow-y:auto">
+      <div class="empty-msg">Loading...</div>
+    </div>
   </div>
 </div>
 
@@ -447,6 +461,7 @@ document.querySelectorAll('.tab').forEach(t=>{
     if(t.dataset.tab==='alerts'){fetchAlertStats();fetchAlerts();fetchRules();}
     if(t.dataset.tab==='analytics'){fetchAnalytics();}
     if(t.dataset.tab==='feed'){fetchFeed();}
+    if(t.dataset.tab==='activity'){fetchActivity();}
   });
 });
 
@@ -783,6 +798,46 @@ connect();
 setInterval(updateUI,1000);
 setInterval(pollHealth,5000);
 pollHealth();
+
+// ===== ACTIVITY (query history) =====
+async function fetchActivity(){
+  const el=document.getElementById('activity-list');
+  try{
+    const res=await fetch('/api/ask-history');
+    const data=await res.json();
+    if(!data.queries||data.queries.length===0){
+      el.innerHTML='<div class="empty-msg">No queries yet. Be the first — try the API!</div>';
+      return;
+    }
+    el.innerHTML=data.queries.map(q=>{
+      const time=q.created_at?new Date(q.created_at+'Z').toLocaleString():'—';
+      const payer=q.payer?q.payer.slice(0,6)+'...'+q.payer.slice(-4):'anonymous';
+      const network=q.network||'base';
+      const answerPreview=q.answer?(q.answer.length>200?q.answer.slice(0,200)+'...':q.answer):'(no answer)';
+      const txLink=q.payment_tx?(
+        network.includes('sepolia')
+          ?`<a href="https://sepolia.basescan.org/tx/${q.payment_tx}" target="_blank" style="color:var(--blue);font-size:11px">${q.payment_tx.slice(0,16)}... ↗</a>`
+          :`<a href="https://basescan.org/tx/${q.payment_tx}" target="_blank" style="color:var(--blue);font-size:11px">${q.payment_tx.slice(0,16)}... ↗</a>`
+      ):'<span style="color:var(--fg3);font-size:11px">pending</span>';
+      return `<div style="background:var(--bg2);border:1px solid #222;border-radius:8px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--yellow)">Q: ${q.question.length>80?q.question.slice(0,80)+'...':q.question}</span>
+          <span style="font-size:10px;color:var(--fg3)">${time}</span>
+        </div>
+        <div style="font-size:12px;color:var(--fg2);line-height:1.5;margin-bottom:8px;white-space:pre-wrap">${answerPreview}</div>
+        <div style="display:flex;gap:12px;align-items:center;font-size:11px;color:var(--fg3)">
+          <span>💳 ${txLink}</span>
+          <span>🔗 ${network}</span>
+          <span>👤 ${payer}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    el.innerHTML=`<div class="empty-msg">Error: ${e.message}</div>`;
+  }
+}
+// Auto-refresh activity every 30s when tab is active
+setInterval(()=>{if(document.querySelector('.tab[data-tab="activity"]')?.classList.contains('active'))fetchActivity();},30000);
 
 // ===== ASK AI (hero quick demo) =====
 async function runQuickAsk(){
