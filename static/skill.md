@@ -1,4 +1,4 @@
-# BaseWhales — Ask Endpoint
+# BaseWhales - Ask Endpoint
 
 > Pay 0.01 USDC on Base. Get AI-interpreted whale intelligence.
 
@@ -11,7 +11,7 @@ Content-Type: application/json
 { "question": "What are the biggest whale moves today?" }
 ```
 
-No payment header → HTTP 402 with full x402 payment spec.
+No payment header -> HTTP 402 with full x402 payment spec.
 
 ## Payment
 
