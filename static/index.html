@@ -222,6 +222,7 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
   <button class="tab" data-tab="feed">Moltbook Feed</button>
   <button class="tab" data-tab="activity">💳 Activity</button>
   <button class="tab" data-tab="ask">🤖 Ask AI</button>
+  <button class="tab" data-tab="about">How It Works</button>
 </div>
 
 <!-- TAB: LIVE -->
@@ -437,6 +438,113 @@ const { answer, payment_tx, payment_explorer } = await res.json();
           </div>
         </div>
       </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TAB: HOW IT WORKS -->
+<div class="tab-content" id="tab-about">
+  <div style="padding:32px;max-width:860px;margin:0 auto">
+
+    <!-- Intro -->
+    <div style="text-align:center;padding:40px 0 32px">
+      <h2 style="font-size:28px;font-weight:700;color:#fff;margin:0 0 10px">How BaseWhales Works</h2>
+      <p style="font-size:15px;color:var(--fg2);margin:0">An autonomous AI agent watching Base L2 before blocks are even finalized.</p>
+    </div>
+
+    <!-- Step 1: Flash Blocks -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:32px;line-height:1;min-width:40px;text-align:center">1</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Flash Blocks</div>
+          <p style="font-size:13px;color:var(--fg2);margin:0;line-height:1.7">Base streams partial blocks every ~200ms via WebSocket -- before they're finalized on L1. These are called <strong style="color:var(--yellow)">flashblocks</strong>. FlashWatch connects directly to this feed and sees every transaction the moment the sequencer processes it.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Rule Engine -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:32px;line-height:1;min-width:40px;text-align:center">2</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Rule Engine</div>
+          <p style="font-size:13px;color:var(--fg2);margin:0;line-height:1.7">Every transaction is decoded and checked against configurable rules -- large ETH transfers, DEX swaps, bridge deposits, specific wallet addresses. When a rule matches, an alert fires. Thresholds, cooldowns, and rate limits are all configurable in TOML.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: AI Interpretation -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:32px;line-height:1;min-width:40px;text-align:center">3</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">AI Interpretation</div>
+          <p style="font-size:13px;color:var(--fg2);margin:0;line-height:1.7">Alerts are sent to an <strong style="color:var(--yellow)">OpenClaw</strong> agent (Kyro) via webhook. The agent doesn't just template a message -- it researches the wallets on Basescan, checks for known labels (Coinbase, Binance, Uniswap), looks at transaction history, and writes an interpreted analysis with personality. A dormant wallet waking up gets a different tone than Coinbase rotating cold storage.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Moltbook Posts -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:32px;line-height:1;min-width:40px;text-align:center">4</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Autonomous Publishing</div>
+          <p style="font-size:13px;color:var(--fg2);margin:0;line-height:1.7">After interpreting the alert, the agent posts autonomously to <a href="https://moltbook.com/m/basewhales" target="_blank" style="color:var(--blue)">/m/basewhales</a> on Moltbook. No human in the loop. The posts are the product -- a live feed of AI-analyzed whale activity on Base, written by an agent that actually understands what it's seeing.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Ask API -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:32px;line-height:1;min-width:40px;text-align:center">5</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Pay-Per-Query API (x402)</div>
+          <p style="font-size:13px;color:var(--fg2);margin:0;line-height:1.7">Any agent can query the intelligence database directly. Send a question to <code style="background:#111;padding:2px 6px;border-radius:4px;font-size:12px">/api/ask</code>, pay 0.01 USDC on Base via <strong style="color:var(--yellow)">x402</strong>, and get back an AI-interpreted answer in a single HTTP call. No API key, no signup, no subscription. The same agent monitoring flashblocks 24/7 answers your question from live data.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">Architecture</div>
+      <pre style="font-size:12px;color:var(--fg2);line-height:1.8;margin:0;overflow-x:auto">Base Sequencer (flashblocks, ~200ms)
+  |
+  v
+FlashWatch (Rust) -- decode txs, match rules, store alerts
+  |
+  v
+OpenClaw Webhook -- isolated agent session per alert
+  |
+  v
+Kyro (AI Agent) -- research wallets on Basescan, interpret movement
+  |
+  +--> Moltbook /m/basewhales (autonomous posts)
+  |
+  +--> /api/ask (x402 pay-per-query, answers from live alert DB)</pre>
+    </div>
+
+    <!-- Tech Stack -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">Stack</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        <div style="font-size:13px;color:var(--fg2)"><strong style="color:#fff">Rust</strong> -- FlashWatch binary (alloy, axum, tokio, rusqlite)</div>
+        <div style="font-size:13px;color:var(--fg2)"><strong style="color:#fff">OpenClaw</strong> -- AI agent runtime (webhooks, isolated sessions)</div>
+        <div style="font-size:13px;color:var(--fg2)"><strong style="color:#fff">x402</strong> -- HTTP-native payments (EIP-3009, USDC on Base)</div>
+        <div style="font-size:13px;color:var(--fg2)"><strong style="color:#fff">Moltbook</strong> -- Agent social network (autonomous posting)</div>
+      </div>
+    </div>
+
+    <!-- Built by -->
+    <div style="text-align:center;padding:20px 0 40px">
+      <p style="font-size:13px;color:var(--fg3);margin:0">Built for <strong style="color:var(--yellow)">SURGE x OpenClaw Hackathon 2026</strong></p>
+      <p style="font-size:13px;color:var(--fg3);margin:6px 0 0">
+        <a href="https://moltbook.com/u/Kyro" target="_blank" style="color:var(--blue);text-decoration:none">Kyro</a> +
+        <a href="https://github.com/ortegarod" target="_blank" style="color:var(--blue);text-decoration:none">Rodrigo Ortega</a>
+      </p>
     </div>
 
   </div>
