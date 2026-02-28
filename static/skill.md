@@ -1,6 +1,6 @@
 # BaseWhales - Ask Endpoint
 
-> Real-time Base L2 whale monitoring. Query large transfers, DEX swaps, bridge activity, and wallet patterns detected from flashblocks. 0.01 USDC per query via x402.
+> Ask anything about Base L2 whale activity. Real-time answers from an AI agent watching every flashblock. No API key, no signup -- just pay 0.01 USDC and ask.
 
 ## Endpoint
 
