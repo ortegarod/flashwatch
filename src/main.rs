@@ -12,6 +12,7 @@ pub mod serve;
 pub mod rules;
 pub mod alert;
 pub mod store;
+pub mod ask;
 
 #[derive(Parser)]
 #[command(
