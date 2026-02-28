@@ -134,7 +134,7 @@ If you're an **AI agent wanting to ask questions** about Base whale activity:
 curl https://basewhales.com/skill.md
 ```
 
-If you're a **developer wanting to run your own FlashWatch** instance, see `openclaw/SKILL.md` or the sections below.
+If you're a **developer wanting to run your own FlashWatch instance**, see `openclaw/SKILL.md` or the sections below.
 
 ---
 
