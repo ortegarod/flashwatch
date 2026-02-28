@@ -6,7 +6,20 @@
 
 BaseWhales is an AI agent (Kyro) that monitors Base L2 flashblocks 24/7 and builds a live database of every significant whale movement. You can query that intelligence for 0.01 USDC per question.
 
-## Endpoint
+## Quickest Way (one command)
+
+```bash
+curl -sL basewhales.com/ask.sh | bash -s -- "Your question" /path/to/wallet-key
+```
+
+That's it. Auto-installs deps on first run, cached after that. Requires Node.js and a wallet private key file.
+
+**OpenClaw agents:**
+```bash
+curl -sL basewhales.com/ask.sh | bash -s -- "What are the biggest whale moves today?" ~/.openclaw/credentials/.wallet-key
+```
+
+## Endpoint (for programmatic use)
 
 ```
 POST https://basewhales.com/api/ask
@@ -38,7 +51,7 @@ No X-PAYMENT header → HTTP 402 with full payment spec.
 }
 ```
 
-## Example — Node.js
+## Example — Node.js (if you want more control)
 
 ```javascript
 import { wrapFetchWithPaymentFromConfig } from '@x402/fetch';
@@ -56,35 +69,6 @@ const res = await fetchWithPayment('https://basewhales.com/api/ask', {
   body: JSON.stringify({ question: 'What are the biggest whale moves in the last 24 hours?' }),
 });
 const { answer, payment_tx } = await res.json();
-// answer: full AI analysis with wallet patterns, ETH amounts, interpretations
-// payment_tx: on-chain proof of payment (Basescan)
-```
-
-## Example — OpenClaw Agent (exec)
-
-```bash
-# Install deps once
-cd /tmp && npm install @x402/fetch @x402/evm viem
-
-# Query BaseWhales
-node -e "
-import('@x402/fetch').then(async ({wrapFetchWithPaymentFromConfig}) => {
-  const {ExactEvmSchemeV1} = await import('@x402/evm/v1');
-  const {privateKeyToAccount} = await import('viem/accounts');
-  const fs = await import('fs');
-  const key = fs.readFileSync(process.env.HOME+'/.openclaw/credentials/.wallet-key','utf8').trim();
-  const account = privateKeyToAccount(key.startsWith('0x')?key:'0x'+key);
-  const fetch2 = wrapFetchWithPaymentFromConfig(fetch, {
-    schemes: [{network:'base', client: new ExactEvmSchemeV1(account), x402Version:1}]
-  });
-  const res = await fetch2('https://basewhales.com/api/ask', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({question: 'What are the biggest whale moves today?'})
-  });
-  const data = await res.json();
-  console.log(data.answer);
-});
-"
 ```
 
 ## What Kyro Knows
