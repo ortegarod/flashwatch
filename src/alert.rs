@@ -54,7 +54,7 @@ pub async fn run(ws_url: &str, rules_path: &str, json_output: bool) -> eyre::Res
     };
 
     info!("Connecting to {}", ws_url);
-    let mut retry_delay = 2u64;
+    const RECONNECT_PAUSE: std::time::Duration = std::time::Duration::from_secs(2);
 
     loop {
         match connect_and_stream(ws_url, &mut engine, json_output, &http_client).await {
@@ -63,9 +63,8 @@ pub async fn run(ws_url: &str, rules_path: &str, json_output: bool) -> eyre::Res
                 break;
             }
             Err(e) => {
-                warn!("Connection lost: {}. Reconnecting in {}s...", e, retry_delay);
-                tokio::time::sleep(std::time::Duration::from_secs(retry_delay)).await;
-                retry_delay = (retry_delay * 2).min(30); // exponential backoff, max 30s
+                warn!("Connection lost: {}. Reconnecting in {}s...", e, RECONNECT_PAUSE.as_secs());
+                tokio::time::sleep(RECONNECT_PAUSE).await;
             }
         }
     }
@@ -80,12 +79,42 @@ async fn connect_and_stream(
     http_client: &Option<reqwest::Client>,
 ) -> eyre::Result<()> {
     let (mut ws, _) = connect_async(ws_url).await?;
+
+    // TCP keepalive — OS-level dead connection detection
+    if let tokio_tungstenite::MaybeTlsStream::Rustls(tls) = ws.get_ref() {
+        let tcp: &tokio::net::TcpStream = tls.get_ref().0;
+        let sock = socket2::SockRef::from(tcp);
+        let keepalive = socket2::TcpKeepalive::new()
+            .with_time(std::time::Duration::from_secs(10))
+            .with_interval(std::time::Duration::from_secs(5))
+            .with_retries(3);
+        sock.set_tcp_keepalive(&keepalive)?;
+    }
+
     info!("Connected — watching for alerts...");
 
     let mut current_block: Option<u64> = None;
     let mut alert_count = 0u64;
 
-    while let Some(Ok(msg)) = ws.next().await {
+    const STALE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+    loop {
+        let msg = tokio::select! {
+            msg = ws.next() => {
+                match msg {
+                    Some(Ok(m)) => m,
+                    Some(Err(e)) => return Err(e.into()),
+                    None => return Ok(()),
+                }
+            }
+            _ = tokio::time::sleep(STALE_TIMEOUT) => {
+                return Err(eyre::eyre!(
+                    "No data received from upstream in {}s — connection stale",
+                    STALE_TIMEOUT.as_secs()
+                ));
+            }
+        };
+
         let data = match msg {
             Message::Text(t) => t.as_bytes().to_vec(),
             Message::Binary(b) => b.to_vec(),

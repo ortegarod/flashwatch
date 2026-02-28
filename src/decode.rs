@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use alloy_primitives::keccak256;
+use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
 use serde::Serialize;
 
 /// Known contract addresses on Base mainnet.
@@ -250,9 +251,12 @@ pub fn decode_raw_tx(hex_str: &str) -> Option<DecodedTx> {
 
     let tx_hash = format!("0x{:x}", keccak256(&bytes));
 
+    // Recover sender address from signature
+    let from_addr = recover_sender(tx_type, &items, rlp_bytes);
+
     Some(DecodedTx {
         hash: Some(tx_hash),
-        from: None, // not in raw tx without recovery
+        from: from_addr,
         to: to_hex,
         to_label,
         value_wei,
@@ -264,6 +268,134 @@ pub fn decode_raw_tx(hex_str: &str) -> Option<DecodedTx> {
 }
 
 /// Minimal RLP list decoder — returns the items in a top-level list.
+/// Recover the sender address from the transaction signature (ecrecover).
+fn recover_sender(tx_type: u8, items: &[Vec<u8>], rlp_bytes: &[u8]) -> Option<String> {
+    // Extract v, r, s based on tx type
+    let (v_bytes, r_bytes, s_bytes, unsigned_payload) = match tx_type {
+        0x02 if items.len() >= 12 => {
+            // EIP-1559: items 9=v, 10=r, 11=s, unsigned = type || rlp(items[0..9])
+            let v = items.get(9)?;
+            let r = items.get(10)?;
+            let s = items.get(11)?;
+            let unsigned = rlp_encode_list(&items[..9]);
+            let mut payload = vec![0x02];
+            payload.extend_from_slice(&unsigned);
+            (v, r, s, payload)
+        }
+        0x01 if items.len() >= 11 => {
+            // EIP-2930: items 8=v, 9=r, 10=s
+            let v = items.get(8)?;
+            let r = items.get(9)?;
+            let s = items.get(10)?;
+            let unsigned = rlp_encode_list(&items[..8]);
+            let mut payload = vec![0x01];
+            payload.extend_from_slice(&unsigned);
+            (v, r, s, payload)
+        }
+        0x00 | _ if tx_type <= 0x7f && items.len() >= 9 && tx_type != 0x7e => {
+            // Legacy: items 6=v, 7=r, 8=s
+            let v = items.get(6)?;
+            let r = items.get(7)?;
+            let s = items.get(8)?;
+            // For legacy, unsigned tx is rlp(nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0)
+            // But we need chain_id from v: chain_id = (v - 35) / 2 for EIP-155
+            let v_val = bytes_to_u128(v) as u64;
+            let chain_id = if v_val >= 35 { (v_val - 35) / 2 } else { 0 };
+            let mut unsigned_items = items[..6].to_vec();
+            unsigned_items.push(u64_to_bytes(chain_id));
+            unsigned_items.push(vec![]); // 0
+            unsigned_items.push(vec![]); // 0
+            let unsigned = rlp_encode_list(&unsigned_items);
+            (v, r, s, unsigned)
+        }
+        _ => return None,
+    };
+
+    // Build 64-byte signature from r and s (each 32 bytes, zero-padded)
+    let mut sig_bytes = [0u8; 64];
+    let r_len = r_bytes.len().min(32);
+    sig_bytes[32 - r_len..32].copy_from_slice(&r_bytes[..r_len]);
+    let s_len = s_bytes.len().min(32);
+    sig_bytes[64 - s_len..64].copy_from_slice(&s_bytes[..s_len]);
+
+    let signature = Signature::from_slice(&sig_bytes).ok()?;
+
+    // Compute recovery id from v
+    let v_val = bytes_to_u128(v_bytes) as u64;
+    let rec_id = match tx_type {
+        0x01 | 0x02 => v_val as u8,  // EIP-2930/1559: v is 0 or 1
+        _ => {
+            // Legacy EIP-155: rec_id = v - 35 - 2*chain_id
+            if v_val >= 35 {
+                let chain_id = (v_val - 35) / 2;
+                (v_val - 35 - 2 * chain_id) as u8
+            } else if v_val >= 27 {
+                (v_val - 27) as u8
+            } else {
+                v_val as u8
+            }
+        }
+    };
+    let recovery_id = RecoveryId::from_byte(rec_id)?;
+
+    // Hash the unsigned payload
+    let msg_hash = keccak256(&unsigned_payload);
+
+    // Recover public key
+    let verifying_key = VerifyingKey::recover_from_prehash(&msg_hash[..], &signature, recovery_id).ok()?;
+    let pubkey_bytes = verifying_key.to_encoded_point(false);
+    let pubkey_uncompressed = &pubkey_bytes.as_bytes()[1..]; // skip 0x04 prefix
+
+    // Address = last 20 bytes of keccak256(pubkey)
+    let addr_hash = keccak256(pubkey_uncompressed);
+    Some(format!("0x{}", hex::encode(&addr_hash[12..])))
+}
+
+fn u64_to_bytes(val: u64) -> Vec<u8> {
+    if val == 0 { return vec![]; }
+    let bytes = val.to_be_bytes();
+    let start = bytes.iter().position(|&b| b != 0).unwrap_or(7);
+    bytes[start..].to_vec()
+}
+
+/// RLP-encode a list of byte vectors.
+fn rlp_encode_list(items: &[Vec<u8>]) -> Vec<u8> {
+    let mut payload = Vec::new();
+    for item in items {
+        rlp_encode_item(item, &mut payload);
+    }
+    let mut out = Vec::new();
+    if payload.len() < 56 {
+        out.push(0xc0 + payload.len() as u8);
+    } else {
+        let len_bytes = payload.len().to_be_bytes();
+        let start = len_bytes.iter().position(|&b| b != 0).unwrap_or(7);
+        let len_of_len = 8 - start;
+        out.push(0xf7 + len_of_len as u8);
+        out.extend_from_slice(&len_bytes[start..]);
+    }
+    out.extend_from_slice(&payload);
+    out
+}
+
+fn rlp_encode_item(item: &[u8], out: &mut Vec<u8>) {
+    if item.len() == 1 && item[0] < 0x80 {
+        out.push(item[0]);
+    } else if item.is_empty() {
+        out.push(0x80);
+    } else if item.len() < 56 {
+        out.push(0x80 + item.len() as u8);
+        out.extend_from_slice(item);
+    } else {
+        let len_bytes = item.len().to_be_bytes();
+        let start = len_bytes.iter().position(|&b| b != 0).unwrap_or(7);
+        let len_of_len = 8 - start;
+        out.push(0xb7 + len_of_len as u8);
+        out.extend_from_slice(&len_bytes[start..]);
+        out.extend_from_slice(item);
+    }
+}
+
 fn decode_rlp_list(data: &[u8]) -> Option<Vec<Vec<u8>>> {
     if data.is_empty() {
         return None;

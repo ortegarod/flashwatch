@@ -161,7 +161,12 @@ pub async fn run(
     let rules_ref = rules_engine.clone();
     let webhook_client_ref = webhook_client.clone();
     tokio::spawn(async move {
-        let mut retry_delay = 2u64;
+        // Fixed 2s pause between reconnects — just enough to avoid hammering
+        // the upstream if it's temporarily down, short enough to recover fast.
+        // No exponential backoff: this is a critical live data feed that must
+        // reconnect quickly. If upstream is truly gone, the error log tells us.
+        const RECONNECT_PAUSE: std::time::Duration = std::time::Duration::from_secs(2);
+
         loop {
             {
                 let mut h = reader_state.health.write().await;
@@ -175,9 +180,8 @@ pub async fn run(
                         h.connected = false;
                         h.reconnect_count += 1;
                     }
-                    tracing::error!("Upstream disconnected: {}. Reconnecting in {}s...", e, retry_delay);
-                    tokio::time::sleep(std::time::Duration::from_secs(retry_delay)).await;
-                    retry_delay = (retry_delay * 2).min(30);
+                    tracing::error!("Upstream disconnected: {}. Reconnecting in {}s...", e, RECONNECT_PAUSE.as_secs());
+                    tokio::time::sleep(RECONNECT_PAUSE).await;
                 }
             }
         }
@@ -536,6 +540,19 @@ async fn upstream_reader_with_health(
     http_client: Option<&reqwest::Client>,
 ) -> eyre::Result<()> {
     let (mut ws, _) = tokio_tungstenite::connect_async(ws_url).await?;
+
+    // Set TCP keepalive on the underlying socket so the OS detects dead connections.
+    // Without this, a silent disconnect (no close frame) causes ws.next() to hang forever.
+    if let tokio_tungstenite::MaybeTlsStream::Rustls(tls) = ws.get_ref() {
+        let tcp: &tokio::net::TcpStream = tls.get_ref().0;
+        let sock = socket2::SockRef::from(tcp);
+        let keepalive = socket2::TcpKeepalive::new()
+            .with_time(std::time::Duration::from_secs(10))
+            .with_interval(std::time::Duration::from_secs(5))
+            .with_retries(3);
+        sock.set_tcp_keepalive(&keepalive)?;
+    }
+
     info!("Connected to upstream flashblocks feed");
 
     {
@@ -546,7 +563,29 @@ async fn upstream_reader_with_health(
     let mut current_block: Option<u64> = None;
     let mut prev_payload: Option<String> = None;
 
-    while let Some(Ok(msg)) = ws.next().await {
+    // Stale connection detection: Base flashblocks arrive every ~200ms.
+    // If we receive nothing for 30s, the upstream connection is dead.
+    // Using tokio::select! instead of a bare `ws.next().await` ensures
+    // we detect silent disconnects (no close frame, no error — just silence).
+    const STALE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+    loop {
+        let msg = tokio::select! {
+            msg = ws.next() => {
+                match msg {
+                    Some(Ok(m)) => m,
+                    Some(Err(e)) => return Err(e.into()),
+                    None => return Ok(()),  // stream ended cleanly
+                }
+            }
+            _ = tokio::time::sleep(STALE_TIMEOUT) => {
+                return Err(eyre::eyre!(
+                    "No data received from upstream in {}s — connection stale",
+                    STALE_TIMEOUT.as_secs()
+                ));
+            }
+        };
+
         let data = match msg {
             TungMessage::Text(t) => t.as_bytes().to_vec(),
             TungMessage::Binary(b) => b.to_vec(),

@@ -9,7 +9,7 @@
 <link rel="canonical" href="https://basewhales.com">
 
 <!-- Favicon (whale emoji) -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐋</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22></text></svg>">
 
 <!-- Open Graph / social preview -->
 <meta property="og:type" content="website">
@@ -57,7 +57,7 @@
   .tab:hover { color: var(--fg); }
   .tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
   .tab-content { display: none; }
-  .tab-content.active { display: block; }
+  .tab-content.active { display: block; min-height: 600px; }
 
   /* Panels */
   .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px 32px; }
@@ -145,6 +145,13 @@
     .charts, .panels { grid-template-columns: 1fr; }
     .metrics { grid-template-columns: repeat(3, 1fr); }
     .stat-cards { grid-template-columns: repeat(2, 1fr); }
+    .header { padding: 12px 16px; }
+    .tabs { padding: 0 16px; }
+  }
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .stat-cards { grid-template-columns: 1fr; }
+    .header h1 { font-size: 16px; }
   }
 </style>
 </head>
@@ -152,10 +159,10 @@
 
 <!-- HEADER -->
 <div class="header">
-  <h1>🐋 Base<span>Whales</span></h1>
+  <h1>Base<span>Whales</span></h1>
   <div style="font-size:11px;color:var(--fg3);margin-top:2px;letter-spacing:.03em">Your Base L2 Intelligence Layer</div>
   <div class="chain-info" id="chain-info">
-    <span class="ci">Base L2</span>
+    <span class="ci">Base L2 Mainnet</span>
     <span class="ci" id="ci-block">—</span>
   </div>
   <div class="spacer"></div>
@@ -168,28 +175,28 @@
 </div>
 
 <!-- HERO — always visible, above tabs -->
-<div style="background:linear-gradient(180deg,#0d1117 0%,#111 100%);border-bottom:1px solid #1a1a1a;padding:28px 32px 24px">
-  <div style="max-width:900px;margin:0 auto;display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
-
-    <!-- Left: pitch -->
-    <div style="flex:1;min-width:260px">
-      <div style="font-size:13px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">BaseWhales Intelligence API</div>
-      <h2 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 8px;line-height:1.3">Ask anything about Base L2 whale activity.<br><span style="color:var(--fg2);font-weight:400;font-size:16px">Real-time answers from an AI agent watching every flashblock.</span></h2>
-      <p style="font-size:13px;color:var(--fg3);margin:0 0 14px;line-height:1.6">Powered by <strong style="color:var(--yellow)">Kyro</strong> — an autonomous agent running 24/7, monitoring Base pre-confirmation blocks and building a live intelligence database of every significant whale move.</p>
+<!-- HERO — uses same grid as the rest of the site -->
+<div class="panels" style="padding:20px 32px;border-bottom:1px solid var(--bg2)">
+  <div class="panel" style="grid-column:1">
+    <h3>BaseWhales Intelligence API</h3>
+    <div class="panel-body" style="max-height:none;overflow:visible;padding:0">
+      <h2 style="font-size:18px;font-weight:700;color:#fff;margin:0 0 8px;line-height:1.3">Ask anything about Base L2 whale activity.</h2>
+      <p style="font-size:12px;color:var(--fg2);margin:0 0 6px">Real-time answers from an AI agent watching every flashblock.</p>
+      <p style="font-size:12px;color:var(--fg3);margin:0 0 12px;line-height:1.5">Powered by <strong style="color:var(--yellow)">Kyro</strong> — autonomous agent running 24/7, monitoring Base pre-confirmation blocks and building a live intelligence database of every significant whale move.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a href="/skill.md" target="_blank" style="display:inline-block;background:var(--yellow);color:#000;font-size:12px;font-weight:700;padding:7px 16px;border-radius:6px;text-decoration:none">curl /skill.md — Agent Docs</a>
-        <a href="https://moltbook.com/m/basewhales" target="_blank" style="display:inline-block;background:var(--bg2);color:var(--fg);font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;text-decoration:none;border:1px solid #333">/m/basewhales →</a>
+        <a href="/skill.md" target="_blank" style="display:inline-block;background:var(--yellow);color:#000;font-size:11px;font-weight:700;padding:6px 14px;border-radius:5px;text-decoration:none">curl /skill.md — Agent Docs</a>
+        <a href="https://moltbook.com/m/basewhales" target="_blank" style="display:inline-block;background:var(--bg2);color:var(--fg);font-size:11px;font-weight:600;padding:6px 14px;border-radius:5px;text-decoration:none;border:1px solid #333">/m/basewhales</a>
       </div>
     </div>
-
-    <!-- Right: quick API box -->
-    <div style="flex:0 0 auto;min-width:280px;max-width:360px;background:#111;border:1px solid #222;border-radius:10px;padding:16px">
-      <div style="font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Quick Start</div>
+  </div>
+  <div class="panel" style="grid-column:2">
+    <h3>Quick Start</h3>
+    <div class="panel-body" style="max-height:none;overflow:visible;padding:0">
       <pre style="margin:0 0 10px;font-size:11px;color:#a3e635;line-height:1.6;overflow-x:auto">POST https://basewhales.com/api/ask
 X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
 
 { "question": "Biggest whale moves today?" }</pre>
-      <div style="font-size:11px;color:var(--fg3);margin-bottom:8px">→ Returns AI answer + on-chain payment TX</div>
+      <div style="font-size:11px;color:var(--fg3);margin-bottom:8px">Returns AI answer + on-chain payment TX</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input id="ask-quick-input" type="text" placeholder="Ask a question..." value="What are the biggest whale moves today?"
           style="flex:1;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:5px;padding:6px 10px;color:#fff;font-family:var(--font);font-size:11px;outline:none;min-width:0"/>
@@ -199,9 +206,9 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
       <div id="ask-quick-result" style="display:none;margin-top:10px;font-size:11px;color:var(--fg3);background:#0d0d0d;border-radius:5px;padding:10px;max-height:120px;overflow-y:auto;line-height:1.5"></div>
       <div id="ask-quick-tx" style="display:none;margin-top:6px;font-size:10px;color:var(--fg3)"></div>
     </div>
-
   </div>
 </div>
+<!-- kyro moved to footer -->
 
 <!-- METRICS -->
 <div class="metrics">
@@ -216,13 +223,11 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
 <!-- TABS -->
 <div class="tabs">
   <button class="tab active" data-tab="live">Live Feed</button>
-  <button class="tab" data-tab="alerts">Alerts</button>
-  <button class="tab" data-tab="analytics">Analytics</button>
-  <button class="tab" data-tab="track">Track TX</button>
-  <button class="tab" data-tab="feed">Moltbook Feed</button>
-  <button class="tab" data-tab="activity">💳 Activity</button>
-  <button class="tab" data-tab="ask">🤖 Ask AI</button>
   <button class="tab" data-tab="about">How It Works</button>
+  <button class="tab" data-tab="alerts">Alerts</button>
+  <button class="tab" data-tab="feed">m/basewhales</button>
+  <button class="tab" data-tab="ask">Ask Kyro (x402)</button>
+  <button class="tab" data-tab="activity">Recent Queries</button>
 </div>
 
 <!-- TAB: LIVE -->
@@ -232,15 +237,15 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
     <div class="chart-card"><h3>Gas Used per Flashblock</h3><canvas id="chart-gas"></canvas></div>
   </div>
   <div class="panels">
-    <div class="panel">
+    <div class="panel" style="display:flex;flex-direction:column">
       <h3>Protocol Activity (rolling 30s)</h3>
-      <div class="panel-body short" id="leaderboard"></div>
-      <h3 style="margin-top:12px">Recent Blocks</h3>
-      <div class="panel-body short" id="block-summary"></div>
+      <div class="panel-body" style="flex:1;max-height:200px" id="leaderboard"></div>
+      <h3 style="margin-top:12px">Whale Activity <span style="font-weight:400;font-size:9px;color:var(--fg4);text-transform:none;letter-spacing:0">— wallets holding 1,000+ ETH active in current blocks</span></h3>
+      <div class="panel-body" style="flex:1;max-height:200px" id="events"></div>
     </div>
-    <div class="panel">
-      <h3>Notable Events</h3>
-      <div class="panel-body tall" id="events"></div>
+    <div class="panel" style="display:flex;flex-direction:column">
+      <h3>Recent Blocks</h3>
+      <div class="panel-body" style="flex:1;max-height:424px" id="block-summary"></div>
     </div>
   </div>
 </div>
@@ -249,6 +254,12 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
 <div class="tab-content" id="tab-alerts">
   <div class="stat-cards" id="alert-stats"></div>
   <div class="panels" style="padding-top:8px">
+    <div class="panel full-width">
+      <h3>Active Rules</h3>
+      <div class="panel-body med" id="rules-list"></div>
+    </div>
+  </div>
+  <div class="panels" style="padding-top:0">
     <div class="panel full-width">
       <h3>Alert Feed</h3>
       <div class="panel-body">
@@ -267,38 +278,9 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
       </div>
     </div>
   </div>
-  <div class="panels" style="padding-top:0">
-    <div class="panel">
-      <h3>Active Rules</h3>
-      <div class="panel-body med" id="rules-list"></div>
-    </div>
-    <div class="panel">
-      <h3>Alerts by Category</h3>
-      <div class="panel-body med" id="category-breakdown"></div>
-    </div>
-  </div>
 </div>
 
-<!-- TAB: ANALYTICS -->
-<div class="tab-content" id="tab-analytics">
-  <div class="stat-cards" id="analytics-stats"></div>
-  <div class="panels" style="padding-top:8px">
-    <div class="panel">
-      <h3>Alerts by Rule</h3>
-      <div class="panel-body med" id="by-rule-chart"></div>
-    </div>
-    <div class="panel">
-      <h3>Alerts by Category</h3>
-      <div class="panel-body med" id="by-cat-chart"></div>
-    </div>
-  </div>
-  <div class="panels" style="padding-top:0">
-    <div class="panel full-width">
-      <h3>Connection Health</h3>
-      <div class="panel-body short" id="health-detail"></div>
-    </div>
-  </div>
-</div>
+<!-- analytics tab removed -->
 
 <!-- TAB: TRACK TX -->
 <div class="tab-content" id="tab-track">
@@ -314,6 +296,7 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
 
 <!-- TAB: MOLTBOOK FEED -->
 <div class="tab-content" id="tab-feed">
+  <div style="padding:12px 32px 0;font-size:12px;color:var(--fg3)">Powered by <a href="https://moltbook.com" target="_blank" style="color:var(--blue);text-decoration:none">Moltbook</a> — the social network for AI agents</div>
   <div class="stat-cards" id="feed-stats" style="padding-bottom:0"></div>
   <div style="padding:12px 32px 0;display:flex;justify-content:space-between;align-items:center">
     <span style="font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em" id="feed-submolt-label"></span>
@@ -343,7 +326,7 @@ X-PAYMENT: &lt;x402 — 0.01 USDC on Base&gt;
 
     <!-- Hero -->
     <div style="text-align:center;padding:40px 0 32px">
-      <div style="font-size:48px;margin-bottom:12px">🐋</div>
+      <div style="font-size:48px;margin-bottom:12px"></div>
       <h2 style="font-size:28px;font-weight:700;color:#fff;margin:0 0 10px">BaseWhales Intelligence</h2>
       <p style="font-size:15px;color:var(--fg2);margin:0 0 6px">Your real-time Base L2 expert. Powered by <strong style="color:var(--yellow)">Kyro</strong> — an AI agent monitoring Base flashblocks 24/7.</p>
       <p style="font-size:13px;color:var(--fg3);margin:0">Ask anything about whale activity. Get AI-interpreted answers from live on-chain data.</p>
@@ -420,23 +403,6 @@ const { answer, payment_tx, payment_explorer } = await res.json();
         <p style="font-size:12px;color:var(--fg3);margin:0 0 8px">OpenClaw agents can install the FlashWatch skill and query BaseWhales intelligence directly:</p>
         <pre style="background:#111;border-radius:6px;padding:10px 14px;font-size:12px;color:#a3e635;margin:0">clawhub install flashwatch</pre>
         <p style="font-size:11px;color:var(--fg3);margin:8px 0 0">Skill source: <a href="https://github.com/ortegarod/flashwatch/blob/master/openclaw/SKILL.md" target="_blank" style="color:var(--blue)">github.com/ortegarod/flashwatch → openclaw/SKILL.md</a></p>
-      </div>
-    </div>
-
-    <!-- About Kyro -->
-    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px">
-      <div style="display:flex;gap:16px;align-items:flex-start">
-        <div style="font-size:36px;line-height:1">🤖</div>
-        <div>
-          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px">Meet Kyro</div>
-          <p style="font-size:13px;color:var(--fg2);margin:0 0 8px">Kyro is an autonomous AI agent running 24/7 on a VPS, watching every Base L2 flashblock before it's finalized. When a whale moves, Kyro investigates — checks ENS, known wallet labels, transaction history — then posts an AI-interpreted alert to <a href="https://moltbook.com/m/basewhales" target="_blank" style="color:var(--blue)">/m/basewhales</a>.</p>
-          <p style="font-size:13px;color:var(--fg2);margin:0 0 8px">The <code style="background:#111;padding:2px 6px;border-radius:4px;font-size:12px">/api/ask</code> endpoint gives you direct access to that same intelligence. Every answer is drawn from Kyro's live alert history — not hallucination, not stale data.</p>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
-            <a href="https://moltbook.com/u/Kyro" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Kyro on Moltbook →</a>
-            <a href="https://moltbook.com/m/basewhales" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">/m/basewhales →</a>
-            <a href="https://github.com/ortegarod/flashwatch" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Source code →</a>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -554,20 +520,22 @@ Kyro (AI Agent) -- research wallets on Basescan, interpret movement
 // ===== GLOBALS =====
 const MAX_POINTS=80,MAX_EVENTS=50,MAX_BLOCKS=15;
 const COLORS={dex:'#22d3ee',bridge:'#a78bfa',lending:'#fbbf24',token:'#4ade80',nft:'#f472b6',system:'#4b5563',unknown:'#6b7280'};
-const EMOJI={dex:'🔄',bridge:'🌉',token:'💰',lending:'🏦',nft:'🖼️',system:'⚙️',unknown:'📦'};
+const EMOJI={dex:'',bridge:'',token:'',lending:'',nft:'',system:'',unknown:''};
 let S={currentPayload:null,blockNumber:null,fbCount:0,txsInBlock:0,gasInBlock:0,baseFee:null,
   blocksTotal:0,totalFb:0,startTime:Date.now(),txsHistory:[],gasHistory:[],
   protoActivity:{},protoWindow:[],currentBlockTxs:0,currentBlockGas:0,currentBlockProtos:{},currentBlockStart:null};
 
 // ===== TABS =====
 document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click',()=>{
+  t.addEventListener('click',(e)=>{
+    e.preventDefault();
+    const scrollY=window.scrollY;
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+    window.scrollTo(0,scrollY);
     if(t.dataset.tab==='alerts'){fetchAlertStats();fetchAlerts();fetchRules();}
-    if(t.dataset.tab==='analytics'){fetchAnalytics();}
     if(t.dataset.tab==='feed'){fetchFeed();}
     if(t.dataset.tab==='activity'){fetchActivity();}
   });
@@ -614,9 +582,10 @@ function updateUI(){
   document.getElementById('m-txs').textContent=S.txsInBlock;
   document.getElementById('m-gas').textContent=fmtG(S.gasInBlock);
   document.getElementById('m-basefee').textContent=S.baseFee!=null?S.baseFee.toFixed(4):'—';
-  const el=Math.floor((Date.now()-S.startTime)/1000);
-  document.getElementById('m-uptime').textContent=fmtDur(el);
-  if(S.totalFb>0)document.getElementById('m-fb-rate').textContent=(S.totalFb/(el||1)).toFixed(1)+'/s';
+  const upSecs=S.serverUptime!=null?S.serverUptime:Math.floor((Date.now()-S.startTime)/1000);
+  if(S.serverUptime!=null)S.serverUptime++;
+  document.getElementById('m-uptime').textContent=fmtDur(upSecs);
+  if(S.totalFb>0)document.getElementById('m-fb-rate').textContent=(S.totalFb/(upSecs||1)).toFixed(1)+'/s';
   drawChart('chart-txs',S.txsHistory,'rgba(74,222,128,1)');
   drawChart('chart-gas',S.gasHistory,'rgba(96,165,250,1)');
   renderLeaderboard();
@@ -633,7 +602,7 @@ function renderLeaderboard(){
     const cat=S.protoActivity[name]||'unknown';const color=COLORS[cat]||'#6b7280';
     const pct=Math.round(count/maxC*100);
     const d=document.createElement('div');d.className='proto-row';
-    d.innerHTML=`<div class="proto-header"><span class="proto-name" style="color:${color}">${EMOJI[cat]||'📦'} ${name}</span><span class="proto-count">${count} txs</span></div><div class="proto-bar"><div class="proto-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+    d.innerHTML=`<div class="proto-header"><span class="proto-name" style="color:${color}">${EMOJI[cat]||''} ${name}</span><span class="proto-count">${count} txs</span></div><div class="proto-bar"><div class="proto-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
     lb.appendChild(d);
   }
 }
@@ -644,7 +613,7 @@ function sealBlock(){
   const d=document.createElement('div');d.className='block-card';
   const protos=Object.entries(S.currentBlockProtos).sort((a,b)=>b[1]-a[1]);
   const tags=protos.slice(0,5).map(([n,c])=>`<span class="proto-tag ${S.protoActivity[n]||'unknown'}">${n} ×${c}</span>`).join('');
-  d.innerHTML=`<div class="block-head"><span class="block-num">Block ${S.blockNumber}</span><span class="block-time">${ts()}</span></div><div class="block-stats"><span>📦 ${S.currentBlockTxs} txs</span><span>⛽ ${fmtG(S.currentBlockGas)}</span><span>⚡ ${S.fbCount} fb</span></div>${tags?`<div class="block-protos">${tags}</div>`:''}`;
+  d.innerHTML=`<div class="block-head"><a href="https://basescan.org/block/${S.blockNumber}" target="_blank" class="block-num" style="text-decoration:none;color:var(--blue)">Block ${S.blockNumber} ↗</a><span class="block-time">${ts()}</span></div><div class="block-stats"><span>${S.currentBlockTxs} txs</span><span>${fmtG(S.currentBlockGas)} gas</span><span>${S.fbCount} flashblocks</span></div>${tags?`<div class="block-protos">${tags}</div>`:''}`;
   bs.insertBefore(d,bs.firstChild);
   while(bs.children.length>MAX_BLOCKS)bs.removeChild(bs.lastChild);
 }
@@ -680,13 +649,32 @@ function handleMessage(fb){
     const label=tx.to_label;
     if(label){S.protoWindow.push({t:now,n:label.name});S.protoActivity[label.name]=tx.category||'unknown';S.currentBlockProtos[label.name]=(S.currentBlockProtos[label.name]||0)+1;}
     const action=tx.action||'',target=label?label.name:(tx.to?tx.to.slice(0,10)+'…':'???'),cat=tx.category||'unknown';
-    if(tx.value_eth>0.5)addEvent('💸',`${action||'Transfer'} → ${target}`,tx.value_eth.toFixed(4)+' ETH',cat);
-    else if(cat==='dex'&&action)addEvent('🔄',`${action} → ${target}`,'',cat);
-    else if(cat==='bridge')addEvent('🌉',`${action||'Bridge'} → ${target}`,tx.value_eth>0.001?tx.value_eth.toFixed(4)+' ETH':'',cat);
-    else if(cat==='lending'&&action)addEvent('🏦',`${action} → ${target}`,'',cat);
-    else if(cat==='nft'&&action)addEvent('🖼️',`${action} → ${target}`,'',cat);
+    // Transfers no longer shown here — whale activity only
   }
-  for(const w of (fb._whale_alerts||[]))if(parseFloat(w.balance_eth)>5)addEvent('🐋',`Whale: ${w.address.slice(0,10)}…`,w.balance_eth+' ETH','whale');
+  const decodedTxs=fb._decoded_txs||[];
+  for(const w of (fb._whale_alerts||[])){
+    const eth=parseFloat(w.balance_eth);
+    if(eth>=1000){
+      const addr=w.address.toLowerCase();
+      const short=addr.slice(0,8)+'…'+addr.slice(-4);
+      // Find what this wallet did in this flashblock
+      let context='';
+      for(const tx of decodedTxs){
+        if(tx.raw)continue;
+        const txTo=(tx.to||'').toLowerCase();
+        const txFrom=(tx.from||'').toLowerCase();
+        if(txTo===addr||txFrom===addr){
+          const dir=txTo===addr?'received':'sent';
+          const amt=tx.value_eth>0.001?tx.value_eth.toFixed(2)+' ETH':'';
+          const label=tx.to_label?tx.to_label.name:'';
+          const action=tx.action||'';
+          context=` — ${dir}${amt?' '+amt:''}${action?' via '+action:''}${label?' ('+label+')':''}`;
+          break;
+        }
+      }
+      addEvent('◆',`<a href="https://basescan.org/address/${addr}" target="_blank" style="color:var(--blue);text-decoration:none">${short}</a> holds ${Number(eth).toLocaleString()} ETH${context}`,'','whale');
+    }
+  }
   updateUI();
 }
 
@@ -705,9 +693,7 @@ async function fetchAlertStats(){
     const sel=document.getElementById('f-rule');
     const existing=new Set([...sel.options].map(o=>o.value));
     for(const r of (d.by_rule||[])){if(!existing.has(r.rule)){const o=document.createElement('option');o.value=r.rule;o.textContent=r.rule+' ('+r.count+')';sel.appendChild(o);existing.add(r.rule);}}
-    // Category breakdown
-    const catEl=document.getElementById('category-breakdown');
-    drawBar(catEl,(d.by_category||[]).map(c=>({label:(EMOJI[c.category]||'📦')+' '+c.category,count:c.count})),()=>'var(--blue)');
+    /* category breakdown removed */
   }catch(e){console.error(e)}
 }
 
@@ -725,15 +711,28 @@ async function fetchAlerts(){
     const el=document.getElementById('alert-list');el.innerHTML='';
     if(!d.alerts?.length){el.innerHTML='<div class="empty-msg">No alerts match filters</div>';return;}
     for(const a of d.alerts){
-      const cat=a.tx?.category||'unknown';const color=COLORS[cat]||'#6b7280';
-      const emoji=EMOJI[cat]||'🚨';
-      const label=a.tx?.to_label||((a.tx?.to||'?').slice(0,12)+'…');
-      const action=a.tx?.action||'';
-      const value=a.tx?.value_eth>0.001?a.tx.value_eth.toFixed(4)+' ETH':'';
-      const time=new Date(a.timestamp*1000).toLocaleTimeString();
-      const block=a.block_number||'?';
-      const row=document.createElement('div');row.className='event-row '+cat;
-      row.innerHTML=`<span class="emoji">${emoji}</span><span style="color:${color};font-weight:600;min-width:90px;font-size:11px">${a.rule_name}</span><span class="desc">${action?action+' → ':''}${label}</span>${value?`<span class="val">${value}</span>`:''}<span class="ts">blk ${block}<br>${time}</span>`;
+      const toAddr=a.tx?.to||'';
+      const fromAddr=a.tx?.from||'';
+      const toLabel=a.tx?.to_label||(toAddr?toAddr.slice(0,10)+'…'+toAddr.slice(-6):'?');
+      const fromShort=fromAddr?fromAddr.slice(0,10)+'…'+fromAddr.slice(-6):'unknown';
+      const value=a.tx?.value_eth>0.001?a.tx.value_eth.toFixed(2)+' ETH':'';
+      const time=new Date(a.timestamp*1000).toLocaleString();
+      const row=document.createElement('div');
+      row.style.cssText='padding:12px 16px;border-bottom:1px solid var(--bg2);';
+      row.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:14px;font-weight:700;color:#fff">${value}</span>
+          <span style="font-size:12px;color:var(--fg3)">${time}</span>
+        </div>
+        <div style="font-size:13px;color:var(--fg2)">
+          From: <a href="https://basescan.org/address/${fromAddr}" target="_blank" style="color:var(--blue)">${fromShort}</a>
+          &nbsp;→&nbsp;
+          To: <a href="https://basescan.org/address/${toAddr}" target="_blank" style="color:var(--blue)">${toLabel}</a>
+          &nbsp;&nbsp;·&nbsp;&nbsp;
+          ${a.tx?.hash?`<a href="https://basescan.org/tx/${a.tx.hash}" target="_blank" style="color:var(--yellow);font-weight:600">View on Basescan</a> &nbsp;·&nbsp;&nbsp;`:''}
+          ${a.block_number?`<a href="https://basescan.org/block/${a.block_number}" target="_blank" style="color:var(--fg3)">Block ${a.block_number}</a> &nbsp;·&nbsp;&nbsp;`:''}
+          <span style="color:var(--fg4)">${a.rule_name}</span>
+        </div>`;
       el.appendChild(row);
     }
   }catch(e){console.error(e)}
@@ -758,40 +757,7 @@ async function fetchRules(){
 }
 
 // ===== ANALYTICS TAB =====
-async function fetchAnalytics(){
-  try{
-    const [statsR,healthR]=await Promise.all([fetch('/alerts/stats'),fetch('/api/health')]);
-    const stats=await statsR.json();const health=await healthR.json();
-
-    const el=document.getElementById('analytics-stats');
-    el.innerHTML=`
-      <div class="sc"><div class="sv">${fmtN(stats.total_alerts||0)}</div><div class="sl">Total Alerts</div></div>
-      <div class="sc"><div class="sv">${stats.last_hour||0}</div><div class="sl">Alerts/Hour</div></div>
-      <div class="sc"><div class="sv">${fmtN(health.total_flashblocks||0)}</div><div class="sl">Flashblocks</div></div>
-      <div class="sc"><div class="sv">${fmtN(health.total_transactions||0)}</div><div class="sl">Transactions</div></div>
-      <div class="sc"><div class="sv">${fmtN(health.blocks_seen||0)}</div><div class="sl">Blocks Seen</div></div>
-      <div class="sc"><div class="sv">${fmtDur(health.uptime_secs||0)}</div><div class="sl">Uptime</div></div>
-    `;
-
-    // By rule
-    drawBar(document.getElementById('by-rule-chart'),(stats.by_rule||[]).map(r=>({label:'🚨 '+r.rule,count:r.count})),()=>'var(--yellow)');
-    // By category
-    drawBar(document.getElementById('by-cat-chart'),(stats.by_category||[]).map(c=>({label:(EMOJI[c.category]||'📦')+' '+c.category,count:c.count})),i=>COLORS[i.label?.split(' ')[1]]||'var(--fg3)');
-
-    // Health detail
-    const hd=document.getElementById('health-detail');
-    hd.innerHTML=`
-      <div class="event-row"><span class="emoji">${health.connected?'🟢':'🔴'}</span><span class="desc">Connection</span><span class="val">${health.connected?'Connected':'Disconnected'}</span></div>
-      <div class="event-row"><span class="emoji">⏱️</span><span class="desc">Uptime</span><span class="val">${fmtDur(health.uptime_secs||0)}</span></div>
-      <div class="event-row"><span class="emoji">🔄</span><span class="desc">Reconnects</span><span class="val">${health.reconnect_count||0}</span></div>
-      <div class="event-row"><span class="emoji">⚡</span><span class="desc">Total Flashblocks</span><span class="val">${fmtN(health.total_flashblocks||0)}</span></div>
-      <div class="event-row"><span class="emoji">📦</span><span class="desc">Total Transactions</span><span class="val">${fmtN(health.total_transactions||0)}</span></div>
-      <div class="event-row"><span class="emoji">🧱</span><span class="desc">Blocks Seen</span><span class="val">${health.blocks_seen||0}</span></div>
-      <div class="event-row"><span class="emoji">🕐</span><span class="desc">Last Message</span><span class="val">${health.last_message_ago_secs||0}s ago</span></div>
-      <div class="event-row"><span class="emoji">🔗</span><span class="desc">Last Block</span><span class="val">${health.last_block||'—'}</span></div>
-    `;
-  }catch(e){console.error(e)}
-}
+/* analytics tab removed */
 
 // ===== MOLTBOOK FEED =====
 async function fetchFeed(){
@@ -806,8 +772,8 @@ async function fetchFeed(){
     const submolt=d.submolt||'';
     const community=d.community||{};
     const displayName=community.display_name||submolt;
-    document.getElementById('feed-submolt-label').textContent=`📡 ${displayName} (/m/${submolt})`;
-    const posts=d.posts||[];
+    document.getElementById('feed-submolt-label').textContent=` ${displayName} (/m/${submolt})`;
+    const posts=(d.posts||[]).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     // Stats
     document.getElementById('feed-stats').innerHTML=`
       <div class="sc"><div class="sv">${community.subscriber_count??'—'}</div><div class="sl">Members</div></div>
@@ -830,7 +796,7 @@ async function fetchFeed(){
           </div>
           <div style="text-align:right;min-width:80px;font-size:10px;color:var(--fg4)">
             <div>${ago}</div>
-            <div style="margin-top:4px">▲ ${p.upvotes||0} · 💬 ${p.comment_count||0}</div>
+            <div style="margin-top:4px">▲ ${p.upvotes||0} ·  ${p.comment_count||0}</div>
             <a href="${url}" target="_blank" style="display:block;margin-top:6px;color:var(--blue);font-size:10px">view ↗</a>
           </div>
         </div>
@@ -861,7 +827,7 @@ async function trackTx(){
     const r=await fetch('/api/track/'+encodeURIComponent(hash));const d=await r.json();
     if(d.status==='confirmed'){
       const statusColor=d.tx_status==='success'?'var(--green)':'var(--red)';
-      const statusIcon=d.tx_status==='success'?'✅':'❌';
+      const statusIcon=d.tx_status==='success'?'':'';
       el.innerHTML=`<div class="track-result">
         <div class="tr-row"><span class="tr-label">Status</span><span class="tr-value" style="color:${statusColor}">${statusIcon} ${d.tx_status}</span></div>
         <div class="tr-row"><span class="tr-label">Block</span><span class="tr-value" style="color:var(--blue)">${d.block_number}</span></div>
@@ -888,6 +854,7 @@ async function pollHealth(){
     document.getElementById('hp-fb').textContent=fmtN(h.total_flashblocks||0)+' fb';
     document.getElementById('hp-blocks').textContent=(h.blocks_seen||0)+' blocks';
     document.getElementById('hp-reconnects').textContent=(h.reconnect_count||0)+' reconn';
+    S.serverUptime=h.uptime_secs||0;
     if(h.last_block)document.getElementById('ci-block').textContent='Block '+h.last_block;
   }catch(e){}
 }
@@ -917,26 +884,31 @@ async function fetchActivity(){
       el.innerHTML='<div class="empty-msg">No queries yet. Be the first — try the API!</div>';
       return;
     }
-    el.innerHTML=data.queries.map(q=>{
+    el.innerHTML=data.queries.map((q,i)=>{
       const time=q.created_at?new Date(q.created_at.endsWith('Z')?q.created_at:q.created_at+'Z').toLocaleString():'—';
-      const payer=q.payer?q.payer.slice(0,6)+'...'+q.payer.slice(-4):'anonymous';
+      const payer=q.payer?q.payer.slice(0,6)+'...'+q.payer.slice(-4):'—';
       const network=q.network||'base';
-      const answerPreview=q.answer?(q.answer.length>200?q.answer.slice(0,200)+'...':q.answer):'(no answer)';
-      const txLink=q.payment_tx?(
-        network.includes('sepolia')
-          ?`<a href="https://sepolia.basescan.org/tx/${q.payment_tx}" target="_blank" style="color:var(--blue);font-size:11px">${q.payment_tx.slice(0,16)}... ↗</a>`
-          :`<a href="https://basescan.org/tx/${q.payment_tx}" target="_blank" style="color:var(--blue);font-size:11px">${q.payment_tx.slice(0,16)}... ↗</a>`
-      ):'<span style="color:var(--fg3);font-size:11px">pending</span>';
+      const basescanBase=network.includes('sepolia')?'https://sepolia.basescan.org':'https://basescan.org';
+      const txLink=q.payment_tx
+        ?`<a href="${basescanBase}/tx/${q.payment_tx}" target="_blank" style="color:var(--blue);font-size:11px">Verify on Basescan ↗</a>`
+        :'<span style="color:var(--fg3);font-size:11px">pending</span>';
+      const payerLink=q.payer
+        ?`<a href="${basescanBase}/address/${q.payer}" target="_blank" style="color:var(--blue);font-size:11px">${payer}</a>`
+        :`<span style="font-size:11px;color:var(--fg3)">${payer}</span>`;
+      const answerFull=escHtml(q.answer||'(no answer)');
+      const answerShort=answerFull.length>200?answerFull.slice(0,200)+'...':answerFull;
+      const expandable=answerFull.length>200;
       return `<div style="background:var(--bg2);border:1px solid #222;border-radius:8px;padding:14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:12px;font-weight:600;color:var(--yellow)">Q: ${q.question.length>80?q.question.slice(0,80)+'...':q.question}</span>
+          <span style="font-size:12px;font-weight:600;color:var(--yellow)">Q: ${escHtml(q.question.length>80?q.question.slice(0,80)+'...':q.question)}</span>
           <span style="font-size:10px;color:var(--fg3)">${time}</span>
         </div>
-        <div style="font-size:12px;color:var(--fg2);line-height:1.5;margin-bottom:8px;white-space:pre-wrap">${answerPreview}</div>
-        <div style="display:flex;gap:12px;align-items:center;font-size:11px;color:var(--fg3)">
-          <span>💳 ${txLink}</span>
-          <span>🔗 ${network}</span>
-          <span>👤 ${payer}</span>
+        <div style="font-size:12px;color:var(--fg2);line-height:1.5;margin-bottom:8px;white-space:pre-wrap">${answerShort}</div>
+        ${expandable?`<details style="margin-bottom:8px"><summary style="font-size:12px;color:var(--blue);cursor:pointer;font-family:var(--font)">Show full answer</summary><div style="font-size:12px;color:var(--fg2);line-height:1.5;white-space:pre-wrap;margin-top:8px">${answerFull}</div></details>`:''}
+        <div style="display:flex;gap:16px;align-items:center;font-size:11px;color:var(--fg3);flex-wrap:wrap">
+          <span>0.01 USDC · ${txLink}</span>
+          <span>${network}</span>
+          <span>From: ${payerLink}</span>
         </div>
       </div>`;
     }).join('');
@@ -963,13 +935,13 @@ async function runQuickAsk(){
     const res=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question})});
     if(res.status===402){
       result.style.color='var(--yellow)';
-      result.textContent='Payment required: 0.01 USDC on Base (x402)\n\nThis demo shows the endpoint is live.\nAI agents with a USDC wallet get the full answer automatically.\n\n→ See sample answer in the "Ask AI" tab below ↓';
+      result.textContent='Payment required: 0.01 USDC on Base (x402)\n\nThis endpoint is live and accepting queries.\nAI agents with a USDC wallet get the full answer automatically.\n\n→ See past answers in the "Recent Queries" tab';
     } else if(res.ok){
       const body=await res.json();
       result.style.color='var(--fg2)'; result.textContent=body.answer||JSON.stringify(body,null,2);
       if(body.payment_tx){
         txEl.style.display='block';
-        txEl.innerHTML=`💳 <a href="${body.payment_explorer||'#'}" target="_blank" style="color:var(--blue)">${body.payment_tx.slice(0,20)}... (Basescan)</a>`;
+        txEl.innerHTML=` <a href="${body.payment_explorer||'#'}" target="_blank" style="color:var(--blue)">${body.payment_tx.slice(0,20)}... (Basescan)</a>`;
       }
     } else { result.style.color='var(--red,#f87171)'; result.textContent='Error: '+res.status; }
   } catch(e){ result.style.color='var(--red,#f87171)'; result.textContent=e.message; }
@@ -1000,7 +972,7 @@ async function runAskDemo(){
       const body=await res.json();
       const spec=body.accepts?.[0]||{};
       status.style.color='var(--yellow)';
-      status.innerHTML=`✓ Endpoint live — HTTP 402 (payment required)<br>
+      status.innerHTML=` Endpoint live — HTTP 402 (payment required)<br>
         <span style="color:var(--fg3)">Asset: USDC on Base &nbsp;|&nbsp; Price: ${spec.maxAmountRequired?Number(spec.maxAmountRequired)/1e6+' USDC':'0.01 USDC'} &nbsp;|&nbsp; Facilitator: facilitator.x402.rs</span><br>
         <span style="color:var(--fg3);font-size:11px">An x402-compatible agent would automatically pay and get the response below ↓</span>`;
       result.style.display='block';
@@ -1009,12 +981,12 @@ async function runAskDemo(){
     } else if(res.ok){
       const body=await res.json();
       status.style.color='var(--green)';
-      status.textContent='✅ HTTP 200 — payment accepted, AI response received';
+      status.textContent=' HTTP 200 — payment accepted, AI response received';
       result.style.display='block'; result.style.color='var(--fg2)';
       result.textContent=body.answer||JSON.stringify(body,null,2);
       if(body.payment_tx){
         txEl.style.display='block';
-        txEl.innerHTML=`💳 Payment TX: <a href="${body.payment_explorer||'#'}" target="_blank" style="color:var(--blue)">${body.payment_tx}</a>`;
+        txEl.innerHTML=` Payment TX: <a href="${body.payment_explorer||'#'}" target="_blank" style="color:var(--blue)">${body.payment_tx}</a>`;
       }
     } else {
       status.style.color='var(--red,#f87171)';
@@ -1028,22 +1000,22 @@ async function runAskDemo(){
 }
 
 function getSampleAnswer(){
-  return `## 🐳 BaseWhales — 24h Whale Report
+  return `##  BaseWhales — 24h Whale Report
 Base L2 | Real-time flashblock data
 
-📊 Summary
+ Summary
 • 13 alerts in the last 24 hours
 • 12,470 ETH total moved (~$31M at current prices)
 • Largest single move: 1,663 ETH
 
-🔴 Top Moves
+ Top Moves
 1. 1,663 ETH → 0x3304e22d... (unknown) — 7.8h ago
 2. 1,663 ETH → 0xeae7380d... (unknown) — 7.9h ago
 3. 1,659 ETH → 0xeae7380d... (same wallet! 2nd hit) — 2.8h ago
 4. 1,657 ETH → 0x39591e7c... (unknown) — 3.6h ago
 5. 1,485 ETH → 0x51c72848... (unknown) — 3.2h ago
 
-🔍 Key Pattern
+ Key Pattern
 0xeae7380d received 3,322 ETH across two separate hits. 
 Accumulating hard — no outflows yet. Watch this wallet.
 
@@ -1054,5 +1026,22 @@ Looks like coordinated institutional positioning, not exchange flow.
 Powered by BaseWhales · basewhales.com`;
 }
 </script>
+
+<footer class="panels" style="padding:16px 32px;border-top:1px solid var(--bg2);margin-top:20px;grid-template-columns:1fr">
+  <div class="panel">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <img src="/kyro-avatar.png" alt="Kyro" style="width:40px;height:40px;border-radius:50%;border:2px solid var(--yellow)">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#fff">Kyro</div>
+        <div style="font-size:10px;color:var(--fg3)">Autonomous AI Agent · ERC-8004 · Base L2</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--fg2);margin:0 0 10px;line-height:1.5">Running 24/7, watching every Base L2 flashblock before finalization. When a whale moves, Kyro investigates — checks ENS, known wallet labels, transaction history — then posts AI-interpreted alerts to <a href="https://moltbook.com/m/basewhales" target="_blank" style="color:var(--blue)">/m/basewhales</a>.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="https://moltbook.com/u/Kyro" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Moltbook Profile</a>
+      <a href="https://github.com/ortegarod/flashwatch" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Source Code</a>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

@@ -91,6 +91,9 @@ pub async fn ask_handler(
             payment_required_response(&state.x402)
         }
         Some(payment) => {
+            // Extract payer address from x402 payment payload
+            let payer_addr = extract_payer(&payment);
+
             // 2. Verify payment with facilitator
             match verify_payment(&client, &state.x402.facilitator_url, &payment, &state.x402).await {
                 Ok(true) => {
@@ -119,7 +122,7 @@ pub async fn ask_handler(
                             // Store query in SQLite for activity tab
                             if let Some(ref store) = state.store {
                                 if let Err(e) = store.insert_query(
-                                    &req.question, Some(&answer), tx_str, None, Some(&state.x402.network),
+                                    &req.question, Some(&answer), tx_str, payer_addr.as_deref(), Some(&state.x402.network),
                                 ) {
                                     tracing::warn!("Failed to store query: {e}");
                                 }
@@ -166,6 +169,22 @@ fn payment_required_response(x402: &X402Config) -> axum::response::Response {
         "error": "Payment required"
     });
     (StatusCode::PAYMENT_REQUIRED, Json(body)).into_response()
+}
+
+/// Extract payer address from base64-encoded x402 payment payload.
+/// The EIP-3009 payload contains a `from` field with the payer's address.
+fn extract_payer(x_payment: &str) -> Option<String> {
+    use base64::{Engine as _, engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD}};
+    let decoded = STANDARD.decode(x_payment)
+        .or_else(|_| URL_SAFE_NO_PAD.decode(x_payment))
+        .ok()?;
+    let payload: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    // x402 exact scheme structure: { payload: { authorization: { from, to, ... }, signature }, scheme, network }
+    payload.get("payload")
+        .and_then(|p| p.get("authorization"))
+        .and_then(|a| a.get("from"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 /// Format raw USDC units (6 decimals) as human-readable amount.
