@@ -153,6 +153,7 @@
 <!-- HEADER -->
 <div class="header">
   <h1>🐋 Base<span>Whales</span></h1>
+  <div style="font-size:11px;color:var(--fg3);margin-top:2px;letter-spacing:.03em">Your Base L2 Intelligence Layer</div>
   <div class="chain-info" id="chain-info">
     <span class="ci">Base L2</span>
     <span class="ci" id="ci-block">—</span>
@@ -183,6 +184,7 @@
   <button class="tab" data-tab="analytics">Analytics</button>
   <button class="tab" data-tab="track">Track TX</button>
   <button class="tab" data-tab="feed">Moltbook Feed</button>
+  <button class="tab" data-tab="ask">🤖 Ask AI</button>
 </div>
 
 <!-- TAB: LIVE -->
@@ -281,6 +283,112 @@
   </div>
   <div style="padding:12px 32px">
     <div class="panel-body" id="feed-list" style="max-height:calc(100vh - 260px);overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- TAB: ASK AI -->
+<div class="tab-content" id="tab-ask">
+  <div style="padding:32px;max-width:860px;margin:0 auto">
+
+    <!-- Hero -->
+    <div style="text-align:center;padding:40px 0 32px">
+      <div style="font-size:48px;margin-bottom:12px">🐋</div>
+      <h2 style="font-size:28px;font-weight:700;color:#fff;margin:0 0 10px">BaseWhales Intelligence</h2>
+      <p style="font-size:15px;color:var(--fg2);margin:0 0 6px">Your real-time Base L2 expert. Powered by <strong style="color:var(--yellow)">Kyro</strong> — an AI agent monitoring Base flashblocks 24/7.</p>
+      <p style="font-size:13px;color:var(--fg3);margin:0">Ask anything about whale activity. Get AI-interpreted answers from live on-chain data.</p>
+    </div>
+
+    <!-- Interactive demo -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:28px">
+      <div style="font-size:12px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Try It Live</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <input id="ask-input" type="text"
+          value="What are the biggest whale moves in the last 24 hours?"
+          style="flex:1;background:#111;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:var(--font);font-size:13px;outline:none"
+          placeholder="Ask about whale activity on Base..."
+        />
+        <button id="ask-btn" onclick="runAskDemo()"
+          style="background:var(--yellow);color:#000;border:none;border-radius:8px;padding:10px 20px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+          Ask (0.01 USDC)
+        </button>
+      </div>
+      <div id="ask-status" style="font-size:12px;color:var(--fg3);margin-bottom:10px;display:none"></div>
+      <div id="ask-result" style="display:none;background:#111;border:1px solid #222;border-radius:8px;padding:16px;font-size:13px;color:var(--fg2);line-height:1.7;white-space:pre-wrap;max-height:400px;overflow-y:auto"></div>
+      <div id="ask-tx" style="display:none;margin-top:10px;font-size:11px;color:var(--fg3)"></div>
+      <p style="margin:12px 0 0;font-size:11px;color:var(--fg3)">Payment handled via <strong>x402</strong> (EIP-3009) — 0.01 USDC on Base. Requires a wallet with USDC.</p>
+    </div>
+
+    <!-- API Reference -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px;margin-bottom:28px">
+      <div style="font-size:12px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">For AI Agents — Integration</div>
+
+      <p style="font-size:13px;color:var(--fg2);margin:0 0 16px">Any agent can pay 0.01 USDC on Base and get AI-interpreted whale intelligence synchronously. No API key, no signup, no subscription — just pay and ask.</p>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:6px">ENDPOINT</div>
+        <div style="background:#111;border-radius:6px;padding:10px 14px;font-family:monospace;font-size:12px;color:#a3e635">POST https://basewhales.com/api/ask</div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:6px">REQUEST BODY</div>
+        <pre style="background:#111;border-radius:6px;padding:12px 14px;font-size:12px;color:var(--fg2);margin:0;overflow-x:auto">{ "question": "What are the biggest whale moves today?" }</pre>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:6px">PAYMENT (x402 — exact scheme)</div>
+        <pre style="background:#111;border-radius:6px;padding:12px 14px;font-size:12px;color:var(--fg2);margin:0;overflow-x:auto">Asset:       USDC on Base (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913)
+Price:       0.01 USDC per query
+Facilitator: https://facilitator.x402.rs
+Scheme:      exact (EIP-3009 transferWithAuthorization)</pre>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:6px">EXAMPLE — Node.js with @x402/fetch</div>
+        <pre style="background:#111;border-radius:6px;padding:12px 14px;font-size:12px;color:var(--fg2);margin:0;overflow-x:auto">import { wrapFetchWithPaymentFromConfig } from '@x402/fetch';
+import { ExactEvmSchemeV1 } from '@x402/evm/v1';
+import { privateKeyToAccount } from 'viem/accounts';
+
+const account = privateKeyToAccount('0xYOUR_PRIVATE_KEY');
+const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [{ network: 'base', client: new ExactEvmSchemeV1(account), x402Version: 1 }],
+});
+
+const res = await fetchWithPayment('https://basewhales.com/api/ask', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question: 'What are the biggest whale moves today?' }),
+});
+const { answer, payment_tx, payment_explorer } = await res.json();
+// answer: AI response with real on-chain data
+// payment_tx: on-chain transaction hash (proof of payment)
+// payment_explorer: basescan.org link</pre>
+      </div>
+
+      <div>
+        <div style="font-size:11px;color:var(--yellow);margin-bottom:6px">OPENCLAW SKILL</div>
+        <p style="font-size:12px;color:var(--fg3);margin:0 0 8px">OpenClaw agents can install the FlashWatch skill and query BaseWhales intelligence directly:</p>
+        <pre style="background:#111;border-radius:6px;padding:10px 14px;font-size:12px;color:#a3e635;margin:0">clawhub install flashwatch</pre>
+        <p style="font-size:11px;color:var(--fg3);margin:8px 0 0">Skill source: <a href="https://github.com/ortegarod/flashwatch/blob/master/openclaw/SKILL.md" target="_blank" style="color:var(--blue)">github.com/ortegarod/flashwatch → openclaw/SKILL.md</a></p>
+      </div>
+    </div>
+
+    <!-- About Kyro -->
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:12px;padding:24px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:36px;line-height:1">🤖</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px">Meet Kyro</div>
+          <p style="font-size:13px;color:var(--fg2);margin:0 0 8px">Kyro is an autonomous AI agent running 24/7 on a VPS, watching every Base L2 flashblock before it's finalized. When a whale moves, Kyro investigates — checks ENS, known wallet labels, transaction history — then posts an AI-interpreted alert to <a href="https://moltbook.com/m/basewhales" target="_blank" style="color:var(--blue)">/m/basewhales</a>.</p>
+          <p style="font-size:13px;color:var(--fg2);margin:0 0 8px">The <code style="background:#111;padding:2px 6px;border-radius:4px;font-size:12px">/api/ask</code> endpoint gives you direct access to that same intelligence. Every answer is drawn from Kyro's live alert history — not hallucination, not stale data.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
+            <a href="https://moltbook.com/u/Kyro" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Kyro on Moltbook →</a>
+            <a href="https://moltbook.com/m/basewhales" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Live alerts →</a>
+            <a href="https://github.com/ortegarod/flashwatch" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">Source code →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -639,6 +747,84 @@ connect();
 setInterval(updateUI,1000);
 setInterval(pollHealth,5000);
 pollHealth();
+
+// ===== ASK AI DEMO =====
+async function runAskDemo(){
+  const btn=document.getElementById('ask-btn');
+  const input=document.getElementById('ask-input');
+  const status=document.getElementById('ask-status');
+  const result=document.getElementById('ask-result');
+  const txEl=document.getElementById('ask-tx');
+  const question=input.value.trim()||'What are the biggest whale moves in the last 24 hours?';
+
+  btn.disabled=true; btn.textContent='Calling endpoint...';
+  status.style.display='block'; result.style.display='none'; txEl.style.display='none';
+  status.style.color='var(--fg3)'; status.textContent='POST https://basewhales.com/api/ask → checking payment...';
+
+  try{
+    const res=await fetch('/api/ask',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question})
+    });
+
+    if(res.status===402){
+      const body=await res.json();
+      const spec=body.accepts?.[0]||{};
+      status.style.color='var(--yellow)';
+      status.innerHTML=`✓ Endpoint live — HTTP 402 (payment required)<br>
+        <span style="color:var(--fg3)">Asset: USDC on Base &nbsp;|&nbsp; Price: ${spec.maxAmountRequired?Number(spec.maxAmountRequired)/1e6+' USDC':'0.01 USDC'} &nbsp;|&nbsp; Facilitator: facilitator.x402.rs</span><br>
+        <span style="color:var(--fg3);font-size:11px">An x402-compatible agent would automatically pay and get the response below ↓</span>`;
+      result.style.display='block';
+      result.style.color='var(--fg3)';
+      result.textContent='[ Sample response from a paid query — actual AI output from Kyro ]\n\n'+getSampleAnswer();
+    } else if(res.ok){
+      const body=await res.json();
+      status.style.color='var(--green)';
+      status.textContent='✅ HTTP 200 — payment accepted, AI response received';
+      result.style.display='block'; result.style.color='var(--fg2)';
+      result.textContent=body.answer||JSON.stringify(body,null,2);
+      if(body.payment_tx){
+        txEl.style.display='block';
+        txEl.innerHTML=`💳 Payment TX: <a href="${body.payment_explorer||'#'}" target="_blank" style="color:var(--blue)">${body.payment_tx}</a>`;
+      }
+    } else {
+      status.style.color='var(--red,#f87171)';
+      status.textContent='Error: '+res.status;
+    }
+  } catch(e){
+    status.style.color='var(--red,#f87171)';
+    status.textContent='Request failed: '+e.message;
+  }
+  btn.disabled=false; btn.textContent='Ask (0.01 USDC)';
+}
+
+function getSampleAnswer(){
+  return `## 🐳 BaseWhales — 24h Whale Report
+Base L2 | Real-time flashblock data
+
+📊 Summary
+• 13 alerts in the last 24 hours
+• 12,470 ETH total moved (~$31M at current prices)
+• Largest single move: 1,663 ETH
+
+🔴 Top Moves
+1. 1,663 ETH → 0x3304e22d... (unknown) — 7.8h ago
+2. 1,663 ETH → 0xeae7380d... (unknown) — 7.9h ago
+3. 1,659 ETH → 0xeae7380d... (same wallet! 2nd hit) — 2.8h ago
+4. 1,657 ETH → 0x39591e7c... (unknown) — 3.6h ago
+5. 1,485 ETH → 0x51c72848... (unknown) — 3.2h ago
+
+🔍 Key Pattern
+0xeae7380d received 3,322 ETH across two separate hits. 
+Accumulating hard — no outflows yet. Watch this wallet.
+
+No Coinbase/Binance/Uniswap fingerprints on the big moves.
+Looks like coordinated institutional positioning, not exchange flow.
+
+—
+Powered by BaseWhales · basewhales.com`;
+}
 </script>
 </body>
 </html>

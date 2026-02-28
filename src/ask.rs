@@ -94,12 +94,28 @@ pub async fn ask_handler(
             // 2. Verify payment with facilitator
             match verify_payment(&client, &state.x402.facilitator_url, &payment, &state.x402).await {
                 Ok(true) => {
-                    // 3. Forward to OpenClaw
+                    // 3. Settle payment (broadcasts on-chain transferWithAuthorization)
+                    let tx_hash = settle_payment(&client, &state.x402.facilitator_url, &payment, &state.x402).await
+                        .unwrap_or_else(|e| {
+                            tracing::warn!("Payment settle failed: {e}");
+                            None
+                        });
+
+                    // 4. Forward to OpenClaw
                     match query_openclaw(&client, &state, &req.question).await {
-                        Ok(answer) => (
-                            StatusCode::OK,
-                            Json(serde_json::json!({ "answer": answer })),
-                        ).into_response(),
+                        Ok(answer) => {
+                            let mut resp = serde_json::json!({ "answer": answer });
+                            if let Some(hash) = tx_hash {
+                                resp["payment_tx"] = serde_json::json!(hash);
+                                let explorer = if state.x402.network.contains("sepolia") {
+                                    format!("https://sepolia.basescan.org/tx/{}", hash)
+                                } else {
+                                    format!("https://basescan.org/tx/{}", hash)
+                                };
+                                resp["payment_explorer"] = serde_json::json!(explorer);
+                            }
+                            (StatusCode::OK, Json(resp)).into_response()
+                        },
                         Err(e) => (
                             StatusCode::SERVICE_UNAVAILABLE,
                             Json(serde_json::json!({ "error": format!("Agent error: {e}") })),
@@ -198,6 +214,65 @@ async fn verify_payment(
 
     let result: serde_json::Value = resp.json().await?;
     Ok(result.get("isValid").and_then(|v| v.as_bool()).unwrap_or(false))
+}
+
+/// Settle payment with the facilitator — broadcasts the on-chain transferWithAuthorization.
+/// Returns the transaction hash if settlement succeeds.
+async fn settle_payment(
+    client: &reqwest::Client,
+    facilitator_url: &str,
+    x_payment: &str,
+    x402: &X402Config,
+) -> eyre::Result<Option<String>> {
+    use base64::{Engine as _, engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD}};
+    let decoded = STANDARD.decode(x_payment)
+        .or_else(|_| URL_SAFE_NO_PAD.decode(x_payment))?;
+    let payment_payload: serde_json::Value = serde_json::from_slice(&decoded)?;
+
+    let payment_requirements = serde_json::json!({
+        "scheme": "exact",
+        "network": x402.network,
+        "maxAmountRequired": x402.price,
+        "resource": x402.resource_url,
+        "description": format!("BaseWhales AI query — {} USDC on {}", format_price(&x402.price), x402.network),
+        "mimeType": "application/json",
+        "payTo": x402.pay_to,
+        "maxTimeoutSeconds": 300,
+        "asset": x402.asset,
+        "extra": { "name": x402.token_name, "version": "2" }
+    });
+
+    let body = serde_json::json!({
+        "x402Version": 1,
+        "paymentPayload": payment_payload,
+        "paymentRequirements": payment_requirements,
+    });
+
+    let resp = client
+        .post(format!("{facilitator_url}/settle"))
+        .header("content-type", "application/json")
+        .json(&body)
+        .timeout(std::time::Duration::from_secs(60))
+        .send()
+        .await?;
+
+    let status = resp.status();
+    let result: serde_json::Value = resp.json().await?;
+
+    if !status.is_success() {
+        tracing::warn!("Settle failed ({}): {}", status, result);
+        return Ok(None);
+    }
+
+    tracing::info!("Payment settled: {}", result);
+    let tx_hash = result.get("transaction")     // facilitator.x402.rs field name
+        .or_else(|| result.get("txHash"))
+        .or_else(|| result.get("transaction_hash"))
+        .or_else(|| result.get("hash"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    Ok(tx_hash)
 }
 
 /// Build a rich context message for the agent.
