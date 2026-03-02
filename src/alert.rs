@@ -279,9 +279,6 @@ fn build_agent_message(alert: &Alert, labels: &std::collections::HashMap<String,
         .filter(|_| tx.to_label.is_none() && label(tx.to.as_deref().unwrap_or("")).is_none())
         .map(|a| format!("https://basescan.org/address/{}", a));
 
-    let submolt = std::env::var("FLASHWATCH_MOLTBOOK_SUBMOLT")
-        .unwrap_or_else(|_| "basewhales".to_string());
-
     let mut lines = vec![
         format!("[FlashWatch Alert — Base Mainnet]"),
         format!("{} | Rule: {} | {}", value, alert.rule_name, block),
@@ -299,53 +296,7 @@ fn build_agent_message(alert: &Alert, labels: &std::collections::HashMap<String,
     }
 
     lines.push(String::new());
-    lines.push("== YOUR JOB ==".to_string());
-    lines.push(String::new());
-    lines.push("1. RESEARCH the wallets if they're unknown.".to_string());
-    lines.push("   - Fetch the Basescan address pages above using web_fetch".to_string());
-    lines.push("   - Look for tags, contract names, ENS names, transaction patterns".to_string());
-    lines.push("   - Is this a known exchange, protocol, whale, or DAO?".to_string());
-    lines.push("   - Is it a contract or an EOA? What has this address done before?".to_string());
-    lines.push(String::new());
-    lines.push("2. INTERPRET the movement. Ask yourself:".to_string());
-    lines.push("   - Exchange deposit/withdrawal? → signals buy/sell intent".to_string());
-    lines.push("   - Cold storage rotation? → routine treasury management, low signal".to_string());
-    lines.push("   - Bridge deposit? → capital moving cross-chain, where and why?".to_string());
-    lines.push("   - Unknown wallet moving big size? → who is this and why now?".to_string());
-    lines.push("   - Anything unusual about the timing, size, or counterparty?".to_string());
-    lines.push(String::new());
-    lines.push("3. WRITE a Moltbook post. Keep it under 280 characters + link. Format:".to_string());
-    lines.push("   [emoji] [value] ETH [what happened] on Base".to_string());
-    lines.push("   [one-line interpretation — confident, specific, have a take]".to_string());
-    lines.push("   🔗 [tx link]".to_string());
-    lines.push(String::new());
-    lines.push("   Emoji guide: 🐋 huge (500+ ETH) | 🦈 large (200-500) | 🔥 interesting (100-200)".to_string());
-    lines.push("   Be direct. If you don't know who the wallet is, say so honestly.".to_string());
-    lines.push("   Don't make up labels. Don't pad with generic phrases.".to_string());
-    lines.push(String::new());
-    lines.push(format!("4. POST to Moltbook using the API (posting to /m/{}):", submolt));
-    lines.push("   Key at: ~/.config/moltbook/credentials.json (use exec, do NOT read the file directly)".to_string());
-    lines.push("   MOLTKEY=$(python3 -c \"import json,os; d=json.load(open(os.path.expanduser('~/.config/moltbook/credentials.json'))); print(d['api_key'])\")".to_string());
-    lines.push(format!("   RESPONSE=$(curl -s -X POST \"https://www.moltbook.com/api/v1/posts\" \\"));
-    lines.push("     -H \"Authorization: Bearer $MOLTKEY\" \\".to_string());
-    lines.push("     -H \"Content-Type: application/json\" \\".to_string());
-    lines.push(format!("     -d '{{\"submolt\":\"{}\",\"title\":\"[your title]\",\"content\":\"[your post]\"}}\')", submolt));
-    lines.push("   echo \"$RESPONSE\"".to_string());
-    lines.push(String::new());
-    lines.push("   Rate limit: 1 post per 30 min. If you get a 429, log it and skip — don't retry.".to_string());
-    lines.push(String::new());
-    lines.push("5. CHECK FOR VERIFICATION CHALLENGE:".to_string());
-    lines.push("   Some communities require a math verification to prevent spam. Check the response:".to_string());
-    lines.push("   CODE=$(echo \"$RESPONSE\" | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('post',{}).get('verification',{}).get('verification_code',''))\")".to_string());
-    lines.push("   CHALLENGE=$(echo \"$RESPONSE\" | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('post',{}).get('verification',{}).get('challenge_text',''))\")".to_string());
-    lines.push(String::new());
-    lines.push("   If CODE is non-empty, you must verify:".to_string());
-    lines.push("   - Read the CHALLENGE text carefully — it's an obfuscated math word problem".to_string());
-    lines.push("   - Decode the words and solve the arithmetic, format to 2 decimal places (e.g. \"25.00\")".to_string());
-    lines.push("   - Submit: curl -s -X POST \"https://www.moltbook.com/api/v1/verify\" \\".to_string());
-    lines.push("       -H \"Authorization: Bearer $MOLTKEY\" \\".to_string());
-    lines.push("       -H \"Content-Type: application/json\" \\".to_string());
-    lines.push("       -d '{\"verification_code\":\"'$CODE'\",\"answer\":\"[your answer]\"}'".to_string());
+    lines.push("Post this alert to Moltbook /m/basewhales using your Moltbook skill. Research the wallets above, then POST to https://www.moltbook.com/api/v1/posts with submolt=basewhales.\n\nPOST FORMAT — strictly follow this order:\n1. First line: your analysis/hook — what this movement means, who these wallets are, what to watch for. This is the preview people see. Make it worth reading.\n2. Then: the raw data (ETH amount, from/to wallets with labels if known, basescan tx link).\n\nExample:\nUnknown wallet moving serious size to Base. New whale entering the ecosystem — watch for DeFi activity.\n\n1,200 ETH transferred on Base\n0xabc...123 (unknown) → 0xdef...456 (unknown)\n🔗 https://basescan.org/tx/0x...\n\nIf the response includes a verification challenge, solve the math and POST to /api/v1/verify with the verification_code and your answer. CRITICAL: The answer must be ONLY the number with 2 decimal places (e.g., '30.00'), no units like 'Newton' or 'N', no extra text.".to_string());
 
     lines.join("\n")
 }

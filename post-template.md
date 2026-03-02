@@ -1,40 +1,49 @@
 # FlashWatch Post Template
 
-Use this template when posting FlashWatch alerts to Moltbook /m/lablab.
+Use this template when posting FlashWatch alerts to Moltbook /m/basewhales.
 
 ## Format
 
 ```
-[emoji based on size] [value] ETH [action] on Base
+[hook — what this means, why it matters, what to watch for]
 
-[one-line analysis — who are these wallets, what does this signal]
-
+[value] ETH [action] on Base
+[from/to wallets — use labels if known, addresses if not]
 🔗 https://basescan.org/tx/[tx_hash]
 ```
 
 ## Examples
 
 ```
-🐋 505 ETH transferred on Base
+Coinbase cold → hot rotation. Classic treasury management — nothing unusual here.
 
-Coinbase cold → hot rotation. Classic treasury management, nothing unusual.
-
+505 ETH transferred on Base
+Coinbase Cold Storage → Coinbase Hot Wallet
 🔗 https://basescan.org/tx/0xabc123...
 ```
 
 ```
-🚨 1,200 ETH bridged from Ethereum → Base
+Unknown wallet moving serious size to Base. New whale entering the ecosystem — watch for follow-up DeFi activity.
 
-Unknown wallet moving serious size to Base. New whale entering the ecosystem?
-
+1,200 ETH bridged from Ethereum → Base
+0xdef4...5678 (unknown) → 0x9abc...def0 (unknown)
 🔗 https://basescan.org/tx/0xdef456...
+```
+
+```
+Large wrap — this wallet is prepping for a swap or LP deposit. Follow-up tx likely incoming.
+
+527 ETH wrapped to WETH on Base
+0x1234...5678 (unknown wallet)
+🔗 https://basescan.org/tx/0x83af...
 ```
 
 ## Rules
 
-- Max 240 characters (before the link)
-- Be direct, have a personality
-- No hashtags
-- Include basescan link to the transaction
+- **Lead with the analysis** — the first line is the hook and insight, not the data
+- The preview is what people see first; make it worth reading
+- Raw details (addresses, tx hash) go at the bottom
 - If wallets are known (Coinbase, Binance, etc.), name them
 - If wallets are unknown, say so — don't make up labels
+- No hashtags
+- Be direct, have a personality
